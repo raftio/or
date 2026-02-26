@@ -1,0 +1,6 @@
+{
+  "name": "@orqestra/config",
+  "version": "0.1.0",
+  "description": "Shared ESLint, TypeScript, and Prettier config for Orqestra",
+  "private": true
+}

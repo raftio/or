@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import * as bundleStore from "../../services/bundle-store.js";
+import { buildBundle } from "../../services/bundling-engine.js";
 
 const app = new Hono();
 
 const CreateBundleBodySchema = z.object({
   ticket_ref: z.string().min(1),
   spec_ref: z.string().optional(),
+  build_from_ticket: z.boolean().optional(),
   tasks: z
     .array(
       z.object({
@@ -42,7 +44,23 @@ app.post("/bundles", async (c) => {
       400
     );
   }
-  const bundle = bundleStore.createBundle(parsed.data);
+  const data = parsed.data;
+
+  if (data.build_from_ticket) {
+    const bundle = await buildBundle({
+      ticket_id: data.ticket_ref,
+      spec_ref: data.spec_ref,
+    });
+    if (!bundle) {
+      return c.json(
+        { error: "Ticket not found or bundling failed" },
+        404
+      );
+    }
+    return c.json(bundle, 201);
+  }
+
+  const bundle = bundleStore.createBundle(data);
   return c.json(bundle, 201);
 });
 

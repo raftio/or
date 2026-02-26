@@ -45,3 +45,8 @@ export function getBundlesByTicket(ticket_ref: string): ExecutionBundle[] {
     (b) => b.ticket_ref === ticket_ref
   );
 }
+
+/** Store a pre-built bundle (e.g. from bundling engine). Used for idempotency. */
+export function storeBundle(bundle: ExecutionBundle): void {
+  store.set(bundle.id, bundle);
+}

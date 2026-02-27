@@ -59,6 +59,7 @@ export default function BundleDetailPage() {
   const { token } = useAuth();
 
   const [bundle, setBundle] = useState<Bundle | null>(null);
+  const [history, setHistory] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -70,8 +71,17 @@ export default function BundleDetailPage() {
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (res.ok) {
-        const data = await res.json();
+        const data: Bundle = await res.json();
         setBundle(data);
+
+        const histRes = await fetch(
+          `${apiUrl}/v1/workspaces/${activeWorkspace.id}/bundles/${encodeURIComponent(data.ticket_ref)}/history`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (histRes.ok) {
+          const histData = await histRes.json();
+          setHistory(histData.bundles ?? []);
+        }
       } else if (res.status === 404) {
         setError("Bundle not found.");
       } else {
@@ -152,6 +162,30 @@ export default function BundleDetailPage() {
           <span className="font-mono text-[10px] opacity-60">{bundle.id}</span>
         </div>
       </div>
+
+      {/* Version history */}
+      {history.length > 1 && (
+        <section className="mt-6">
+          <h2 className="text-sm font-semibold text-base-text">
+            Versions ({history.length})
+          </h2>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {history.map((h) => (
+              <Link
+                key={h.id}
+                href={`/bundles/${h.id}`}
+                className={`rounded-full px-3 py-1 text-xs font-medium no-underline transition-colors ${
+                  h.id === bundle.id
+                    ? "bg-primary text-white"
+                    : "bg-primary/10 text-primary hover:bg-primary/20"
+                }`}
+              >
+                v{h.version}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Tasks */}
       <section className="mt-8">

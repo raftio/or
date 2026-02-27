@@ -219,14 +219,18 @@ export async function listBundles(
 
   const [dataResult, countResult] = await Promise.all([
     query<BundleRow>(
-      `SELECT * FROM workspace_bundles
-       WHERE workspace_id = $1
-       ORDER BY created_at DESC
+      `SELECT * FROM (
+         SELECT DISTINCT ON (ticket_ref) *
+         FROM workspace_bundles
+         WHERE workspace_id = $1
+         ORDER BY ticket_ref, version DESC
+       ) latest
+       ORDER BY latest.created_at DESC
        LIMIT $2 OFFSET $3`,
       [workspaceId, limit, offset],
     ),
     query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM workspace_bundles WHERE workspace_id = $1`,
+      `SELECT COUNT(DISTINCT ticket_ref) AS count FROM workspace_bundles WHERE workspace_id = $1`,
       [workspaceId],
     ),
   ]);

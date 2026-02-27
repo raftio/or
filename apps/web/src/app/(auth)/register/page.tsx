@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -15,6 +16,10 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!name.trim()) {
+      setError("Please enter your name.");
+      return;
+    }
     if (!email.trim() || !password) {
       setError("Please enter your email and password.");
       return;
@@ -34,6 +39,7 @@ export default function RegisterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: name.trim(),
           email: email.trim(),
           password,
         }),
@@ -55,6 +61,11 @@ export default function RegisterPage() {
       if (data.user?.email) {
         if (typeof window !== "undefined") {
           localStorage.setItem("orqestra_user", data.user.email);
+        }
+      }
+      if (data.user?.name) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("orqestra_user_name", data.user.name);
         }
       }
       window.location.href = "/";
@@ -93,6 +104,24 @@ export default function RegisterPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="name"
+              className="text-sm font-medium text-base-text-muted"
+            >
+              Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              autoComplete="name"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={loading}
+              className="w-full rounded-lg border border-base-border bg-base px-4 py-3 text-base text-base-text outline-none transition placeholder:text-base-text-muted placeholder:opacity-70 focus:border-primary focus:ring-2 focus:ring-glow/20 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+          </div>
           <div className="flex flex-col gap-2">
             <label
               htmlFor="email"

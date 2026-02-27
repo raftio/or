@@ -40,9 +40,14 @@ export default function LoginPage() {
           localStorage.setItem("orqestra_token", data.token);
         }
       }
-      if (remember && data.user?.email) {
+      if (data.user?.email) {
         if (typeof window !== "undefined") {
           localStorage.setItem("orqestra_user", data.user.email);
+        }
+      }
+      if (data.user?.name) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("orqestra_user_name", data.user.name);
         }
       }
       window.location.href = "/";

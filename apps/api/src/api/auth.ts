@@ -8,6 +8,7 @@ import { getJwtSecret } from "../config.js";
 const app = new Hono();
 
 const RegisterBodySchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
@@ -35,19 +36,20 @@ app.post("/register", async (c) => {
       400
     );
   }
-  const { email, password } = parsed.data;
+  const { name, email, password } = parsed.data;
+  const nameTrimmed = name.trim();
   const passwordHash = await bcrypt.hash(password, 10);
 
   try {
     const result = await query<{ id: string }>(
-      `INSERT INTO users (email, password_hash) VALUES ($1, $2)
+      `INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3)
        RETURNING id`,
-      [email.toLowerCase().trim(), passwordHash]
+      [email.toLowerCase().trim(), nameTrimmed, passwordHash]
     );
     const user = result.rows[0];
     const token = await createToken(user.id, email);
     return c.json(
-      { token, user: { id: user.id, email } },
+      { token, user: { id: user.id, email, name: nameTrimmed } },
       201
     );
   } catch (err: unknown) {
@@ -71,8 +73,8 @@ app.post("/login", async (c) => {
   const { email, password } = parsed.data;
   const emailNorm = email.toLowerCase().trim();
 
-  const result = await query<{ id: string; password_hash: string }>(
-    `SELECT id, password_hash FROM users WHERE email = $1`,
+  const result = await query<{ id: string; name: string; password_hash: string }>(
+    `SELECT id, name, password_hash FROM users WHERE email = $1`,
     [emailNorm]
   );
   const user = result.rows[0];
@@ -81,7 +83,30 @@ app.post("/login", async (c) => {
   }
 
   const token = await createToken(user.id, emailNorm);
-  return c.json({ token, user: { id: user.id, email: emailNorm } });
+  return c.json({ token, user: { id: user.id, email: emailNorm, name: user.name } });
+});
+
+app.get("/me", async (c) => {
+  const auth = c.req.header("Authorization");
+  if (!auth?.startsWith("Bearer ")) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  try {
+    const secret = new TextEncoder().encode(getJwtSecret());
+    const { payload } = await jose.jwtVerify(auth.slice(7), secret);
+    const userId = payload.sub as string;
+    const result = await query<{ id: string; email: string; name: string }>(
+      `SELECT id, email, name FROM users WHERE id = $1`,
+      [userId]
+    );
+    const user = result.rows[0];
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+    return c.json({ user: { id: user.id, email: user.email, name: user.name } });
+  } catch {
+    return c.json({ error: "Invalid token" }, 401);
+  }
 });
 
 export default app;

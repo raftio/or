@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth } from "./auth-provider";
 
 export function UserMenu() {
-  const { isLoggedIn, userEmail, logout } = useAuth();
+  const { isLoggedIn, userEmail, userName, logout } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -38,8 +38,8 @@ export function UserMenu() {
         aria-label="User menu"
         className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-base transition-colors hover:bg-primary-hover"
       >
-        {isLoggedIn && userEmail ? (
-          userEmail[0].toUpperCase()
+        {isLoggedIn && (userName || userEmail) ? (
+          (userName || userEmail)![0].toUpperCase()
         ) : (
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -59,11 +59,18 @@ export function UserMenu() {
 
       {open && (
         <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-lg border border-base-border bg-surface py-1 shadow-lg ring-1 ring-white/5">
-          {userEmail && (
+          {(userName || userEmail) && (
             <div className="border-b border-base-border px-4 py-2">
-              <p className="truncate text-sm font-medium text-base-text">
-                {userEmail}
-              </p>
+              {userName && (
+                <p className="truncate text-sm font-medium text-base-text">
+                  {userName}
+                </p>
+              )}
+              {userEmail && (
+                <p className="truncate text-xs text-base-text-muted">
+                  {userEmail}
+                </p>
+              )}
             </div>
           )}
           <Link

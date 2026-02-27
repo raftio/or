@@ -14,6 +14,7 @@ interface AuthContextValue {
   hydrated: boolean;
   isLoggedIn: boolean;
   userEmail: string | null;
+  userName: string | null;
   logout: () => void;
 }
 
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextValue>({
   hydrated: false,
   isLoggedIn: false,
   userEmail: null,
+  userName: null,
   logout: () => {},
 });
 
@@ -28,12 +30,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setToken(localStorage.getItem("orqestra_token"));
-    setUserEmail(localStorage.getItem("orqestra_user"));
+    const t = localStorage.getItem("orqestra_token");
+    const e = localStorage.getItem("orqestra_user");
+    const n = localStorage.getItem("orqestra_user_name");
+    setToken(t);
+    setUserEmail(e);
+    setUserName(n);
     setHydrated(true);
+
+    if (t && (!e || !n)) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      fetch(`${apiUrl}/auth/me`, {
+        headers: { Authorization: `Bearer ${t}` },
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!data?.user) return;
+          if (data.user.email) {
+            localStorage.setItem("orqestra_user", data.user.email);
+            setUserEmail(data.user.email);
+          }
+          if (data.user.name) {
+            localStorage.setItem("orqestra_user_name", data.user.name);
+            setUserName(data.user.name);
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -44,6 +71,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (e.key === "orqestra_user") {
         setUserEmail(e.newValue);
       }
+      if (e.key === "orqestra_user_name") {
+        setUserName(e.newValue);
+      }
     }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -52,8 +82,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem("orqestra_token");
     localStorage.removeItem("orqestra_user");
+    localStorage.removeItem("orqestra_user_name");
     setToken(null);
     setUserEmail(null);
+    setUserName(null);
     router.push("/login");
   }, [router]);
 
@@ -62,9 +94,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hydrated,
       isLoggedIn: hydrated && !!token,
       userEmail,
+      userName,
       logout,
     }),
-    [hydrated, token, userEmail, logout],
+    [hydrated, token, userEmail, userName, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

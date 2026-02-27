@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 interface AuthContextValue {
   hydrated: boolean;
   isLoggedIn: boolean;
+  token: string | null;
   userEmail: string | null;
   userName: string | null;
   logout: () => void;
@@ -21,6 +22,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   hydrated: false,
   isLoggedIn: false,
+  token: null,
   userEmail: null,
   userName: null,
   logout: () => {},
@@ -93,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       hydrated,
       isLoggedIn: hydrated && !!token,
+      token,
       userEmail,
       userName,
       logout,

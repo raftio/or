@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
 import { useAuth } from "@/components/auth-provider";
+import { WorkspaceProvider } from "@/components/workspace-provider";
 
 export default function MainLayout({
   children,
@@ -34,12 +35,12 @@ export default function MainLayout({
   }
 
   return (
-    <>
+    <WorkspaceProvider>
       <Navbar />
       <div className="flex min-h-[calc(100vh-3.5rem)]">
         <Sidebar />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
-    </>
+    </WorkspaceProvider>
   );
 }

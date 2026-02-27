@@ -15,7 +15,7 @@ import { cors } from "hono/cors";
 import health from "./api/health.js";
 import v1 from "./api/v1/index.js";
 import auth from "./api/auth.js";
-import { ensureUsersTable } from "./db/index.js";
+import { ensureUsersTable, ensureWorkspaceTables } from "./db/index.js";
 
 const app = new Hono();
 
@@ -30,8 +30,9 @@ const port = Number(process.env.PORT) || 3001;
 async function start() {
   try {
     await ensureUsersTable();
+    await ensureWorkspaceTables();
   } catch (e) {
-    console.error("Failed to ensure users table (is DATABASE_URL set?):", e);
+    console.error("Failed to ensure database tables (is DATABASE_URL set?):", e);
     process.exit(1);
   }
   serve({ fetch: app.fetch, port }, (info) => {

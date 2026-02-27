@@ -47,6 +47,17 @@ app.post("/register", async (c) => {
       [email.toLowerCase().trim(), nameTrimmed, passwordHash]
     );
     const user = result.rows[0];
+
+    const slug = `personal-${user.id.slice(0, 8)}`;
+    const wsResult = await query<{ id: string }>(
+      `INSERT INTO workspaces (name, slug, owner_id) VALUES ($1, $2, $3) RETURNING id`,
+      ["Personal", slug, user.id]
+    );
+    await query(
+      `INSERT INTO workspace_members (workspace_id, user_id, role) VALUES ($1, $2, 'owner')`,
+      [wsResult.rows[0].id, user.id]
+    );
+
     const token = await createToken(user.id, email);
     return c.json(
       { token, user: { id: user.id, email, name: nameTrimmed } },

@@ -4,6 +4,7 @@ import execution from "./execution.js";
 import evidence from "./evidence.js";
 import workflow from "./workflow.js";
 import outcome from "./outcome.js";
+import workspaces from "./workspaces.js";
 
 const v1 = new Hono().basePath("/v1");
 
@@ -12,5 +13,6 @@ v1.route("/", execution);
 v1.route("/", evidence);
 v1.route("/", workflow);
 v1.route("/", outcome);
+v1.route("/", workspaces);
 
 export default v1;

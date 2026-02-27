@@ -1,6 +1,7 @@
 import type { TicketProvider } from "./contract.js";
 import { createLinearTicketProvider } from "./linear.js";
 import { createJiraTicketProvider } from "./jira.js";
+import { createGitHubIssuesProvider } from "./github-issues.js";
 import { createStubTicketProvider } from "./stub.js";
 import { getTicketProvider, getLinearApiKey } from "../../config.js";
 import { query } from "../../db/index.js";
@@ -38,6 +39,12 @@ export async function createTicketProviderForWorkspace(
       if (row.provider === "linear") {
         const { api_key } = row.config;
         if (api_key) return createLinearTicketProvider(api_key);
+      }
+      if (row.provider === "github") {
+        const { owner, repo, access_token } = row.config;
+        if (owner && repo && access_token) {
+          return createGitHubIssuesProvider(owner, repo, access_token);
+        }
       }
     }
   } catch {

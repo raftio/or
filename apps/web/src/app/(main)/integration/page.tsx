@@ -4,30 +4,19 @@ import { useCallback, useEffect, useState } from "react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { useAuth } from "@/components/auth-provider";
 import { IntegrationDrawer } from "./_components/integration-drawer";
-import { JiraCard } from "./_components/jira-card";
-import { JiraForm, type JiraIntegration } from "./_components/jira-form";
+import { VENDORS } from "./_components/vendor-registry";
 import { CicdCard } from "./_components/cicd-card";
-import { IdeCard } from "./_components/ide-card";
-import { IdeSetup } from "./_components/ide-setup";
 import { GitProviderCard } from "./_components/git-provider-card";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-type VendorId = "jira" | "ide";
-
-const DRAWER_TITLES: Record<VendorId, string> = {
-  jira: "Jira Cloud",
-  ide: "IDE / Agent",
-};
 
 export default function IntegrationPage() {
   const { activeWorkspace } = useWorkspace();
   const { token } = useAuth();
 
   const [loading, setLoading] = useState(true);
-  const [jiraIntegration, setJiraIntegration] =
-    useState<JiraIntegration | null>(null);
-  const [openVendor, setOpenVendor] = useState<VendorId | null>(null);
+  const [integrations, setIntegrations] = useState<Record<string, any>>({});
+  const [openVendor, setOpenVendor] = useState<string | null>(null);
 
   const fetchIntegrations = useCallback(async () => {
     if (!activeWorkspace || !token) return;
@@ -44,10 +33,11 @@ export default function IntegrationPage() {
       );
       if (!res.ok) return;
       const data = await res.json();
-      const jira = (data.integrations ?? []).find(
-        (i: { provider: string }) => i.provider === "jira",
-      ) as JiraIntegration | undefined;
-      setJiraIntegration(jira ?? null);
+      const map: Record<string, any> = {};
+      for (const item of data.integrations ?? []) {
+        map[item.provider] = item;
+      }
+      setIntegrations(map);
     } catch {
       // keep current state
     } finally {
@@ -67,28 +57,15 @@ export default function IntegrationPage() {
   const isAdmin =
     activeWorkspace?.role === "owner" || activeWorkspace?.role === "admin";
 
-  const jiraConnected = !!jiraIntegration;
-
-  const connectedCards = (
-    <>
-      {jiraConnected && (
-        <JiraCard connected onClick={() => setOpenVendor("jira")} />
-      )}
-    </>
+  const connectedVendors = VENDORS.filter(
+    (v) => v.integrationProvider && integrations[v.integrationProvider],
+  );
+  const availableVendors = VENDORS.filter(
+    (v) => !v.integrationProvider || !integrations[v.integrationProvider],
   );
 
-  const hasConnected = jiraConnected;
-
-  const availableCards = (
-    <>
-      {!jiraConnected && (
-        <JiraCard connected={false} onClick={() => setOpenVendor("jira")} />
-      )}
-      <CicdCard />
-      <IdeCard onClick={() => setOpenVendor("ide")} />
-      <GitProviderCard />
-    </>
-  );
+  const currentVendor = VENDORS.find((v) => v.id === openVendor);
+  const FormComponent = currentVendor?.formComponent;
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
@@ -104,20 +81,38 @@ export default function IntegrationPage() {
         <p className="mt-10 text-sm text-base-text-muted">Loading...</p>
       ) : (
         <>
-          {hasConnected && (
+          {connectedVendors.length > 0 && (
             <section className="mt-10">
               <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-base-text-muted">
                 Connected
               </h2>
-              <div className="grid gap-6 sm:grid-cols-2">{connectedCards}</div>
+              <div className="grid gap-6 sm:grid-cols-2">
+                {connectedVendors.map((v) => (
+                  <v.cardComponent
+                    key={v.id}
+                    connected
+                    onClick={() => setOpenVendor(v.id)}
+                  />
+                ))}
+              </div>
             </section>
           )}
 
-          <section className={hasConnected ? "mt-10" : "mt-10"}>
+          <section className="mt-10">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-base-text-muted">
               Available
             </h2>
-            <div className="grid gap-6 sm:grid-cols-2">{availableCards}</div>
+            <div className="grid gap-6 sm:grid-cols-2">
+              {availableVendors.map((v) => (
+                <v.cardComponent
+                  key={v.id}
+                  connected={false}
+                  onClick={() => setOpenVendor(v.id)}
+                />
+              ))}
+              <CicdCard />
+              <GitProviderCard />
+            </div>
           </section>
         </>
       )}
@@ -125,18 +120,22 @@ export default function IntegrationPage() {
       <IntegrationDrawer
         open={!!openVendor}
         onClose={() => setOpenVendor(null)}
-        title={openVendor ? DRAWER_TITLES[openVendor] : ""}
+        title={currentVendor?.title ?? ""}
       >
-        {openVendor === "jira" && activeWorkspace && token && (
-          <JiraForm
-            workspaceId={activeWorkspace.id}
-            token={token}
-            integration={jiraIntegration}
-            isAdmin={isAdmin}
-            onUpdate={handleUpdate}
-          />
-        )}
-        {openVendor === "ide" && <IdeSetup />}
+        {FormComponent &&
+          (currentVendor?.integrationProvider && activeWorkspace && token ? (
+            <FormComponent
+              workspaceId={activeWorkspace.id}
+              token={token}
+              integration={
+                integrations[currentVendor.integrationProvider] ?? null
+              }
+              isAdmin={isAdmin}
+              onUpdate={handleUpdate}
+            />
+          ) : (
+            <FormComponent />
+          ))}
       </IntegrationDrawer>
     </div>
   );

@@ -1,9 +1,9 @@
 /**
  * App config from env
  */
-export function getTicketProvider(): "stub" | "linear" | "jira" {
+export function getTicketProvider(): "stub" | "linear" | "jira" | "github" {
   const v = process.env.TICKET_PROVIDER?.toLowerCase();
-  if (v === "linear" || v === "jira") return v;
+  if (v === "linear" || v === "jira" || v === "github") return v;
   return "stub";
 }
 

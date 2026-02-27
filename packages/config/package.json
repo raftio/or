@@ -1,0 +1,17 @@
+{
+  "name": "@orqestra/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.config.js",
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./prettier": "./prettier.config.json"
+  },
+  "scripts": {},
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

@@ -16,6 +16,7 @@
 coverage.*
 *.coverprofile
 profile.cov
+coverage/
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -24,15 +25,29 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
+# Env
 .env
+.env.local
+.env.*.local
 
 # Editor/IDE
 # .idea/
 # .vscode/
 .DS_Store
 
-# Node
+# Node / pnpm
 node_modules/
 dist/
 *.tsbuildinfo
+.pnpm-debug.log*
+.npm
+.eslintcache
+
+# Next.js
+.next/
+out/
+
+# Build / tooling
+.turbo/
+.vercel/
+*.log

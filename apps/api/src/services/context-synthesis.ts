@@ -1,7 +1,7 @@
 /**
  * RFC-008: Context Synthesis – merge ticket + doc, cache, invalidation
  */
-import { createTicketProvider } from "../adapters/ticket/index.js";
+import { createTicketProvider, createTicketProviderForWorkspace } from "../adapters/ticket/index.js";
 import { createDocumentProvider } from "../adapters/document/index.js";
 import { getContextCacheTtlMinutes } from "../config.js";
 import type { SynthesizedContext } from "@orqestra/domain";
@@ -13,8 +13,8 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
-function cacheKey(ticket_id: string, spec_ref?: string): string {
-  return `${ticket_id}:${spec_ref ?? ""}`;
+function cacheKey(ticket_id: string, spec_ref?: string, workspaceId?: string): string {
+  return `${workspaceId ?? ""}:${ticket_id}:${spec_ref ?? ""}`;
 }
 
 /**
@@ -25,14 +25,17 @@ function cacheKey(ticket_id: string, spec_ref?: string): string {
 export async function synthesizeContext(input: {
   ticket_id: string;
   spec_ref?: string;
+  workspace_id?: string;
 }): Promise<SynthesizedContext | null> {
-  const key = cacheKey(input.ticket_id, input.spec_ref);
+  const key = cacheKey(input.ticket_id, input.spec_ref, input.workspace_id);
   const ttlMs = getContextCacheTtlMinutes() * 60 * 1000;
   const now = Date.now();
   const hit = cache.get(key);
   if (hit && hit.expiresAt > now) return hit.context;
 
-  const ticketProvider = createTicketProvider();
+  const ticketProvider = input.workspace_id
+    ? await createTicketProviderForWorkspace(input.workspace_id)
+    : createTicketProvider();
   const ticket = await ticketProvider.getTicket(input.ticket_id);
   if (!ticket) return null;
 

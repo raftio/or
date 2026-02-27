@@ -80,6 +80,22 @@ export async function ensureWorkspaceTables(): Promise<void> {
   `);
 }
 
+export async function ensureIntegrationTables(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS workspace_integrations (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id  UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      provider      TEXT NOT NULL,
+      config        JSONB NOT NULL DEFAULT '{}',
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(workspace_id, provider)
+    );
+    CREATE INDEX IF NOT EXISTS idx_wi_provider_workspace
+      ON workspace_integrations(workspace_id, provider);
+  `);
+}
+
 export async function closePool(): Promise<void> {
   if (pool) {
     await pool.end();

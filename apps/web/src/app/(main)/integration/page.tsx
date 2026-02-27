@@ -8,14 +8,16 @@ import { JiraCard } from "./_components/jira-card";
 import { JiraForm, type JiraIntegration } from "./_components/jira-form";
 import { CicdCard } from "./_components/cicd-card";
 import { IdeCard } from "./_components/ide-card";
+import { IdeSetup } from "./_components/ide-setup";
 import { GitProviderCard } from "./_components/git-provider-card";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-type VendorId = "jira";
+type VendorId = "jira" | "ide";
 
 const DRAWER_TITLES: Record<VendorId, string> = {
   jira: "Jira Cloud",
+  ide: "IDE / Agent",
 };
 
 export default function IntegrationPage() {
@@ -83,7 +85,7 @@ export default function IntegrationPage() {
         <JiraCard connected={false} onClick={() => setOpenVendor("jira")} />
       )}
       <CicdCard />
-      <IdeCard />
+      <IdeCard onClick={() => setOpenVendor("ide")} />
       <GitProviderCard />
     </>
   );
@@ -134,6 +136,7 @@ export default function IntegrationPage() {
             onUpdate={handleUpdate}
           />
         )}
+        {openVendor === "ide" && <IdeSetup />}
       </IntegrationDrawer>
     </div>
   );

@@ -96,6 +96,25 @@ export async function ensureIntegrationTables(): Promise<void> {
   `);
 }
 
+export async function ensureApiTokenTables(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS workspace_api_tokens (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id  UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      created_by    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name          TEXT NOT NULL DEFAULT 'Untitled token',
+      token_hash    TEXT NOT NULL UNIQUE,
+      token_prefix  TEXT NOT NULL,
+      expires_at    TIMESTAMPTZ,
+      last_used_at  TIMESTAMPTZ,
+      revoked_at    TIMESTAMPTZ,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_wat_workspace ON workspace_api_tokens(workspace_id);
+    CREATE INDEX IF NOT EXISTS idx_wat_hash ON workspace_api_tokens(token_hash);
+  `);
+}
+
 export async function closePool(): Promise<void> {
   if (pool) {
     await pool.end();

@@ -2,8 +2,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import * as bundleStore from "../../services/bundle-store.js";
 import { buildBundle } from "../../services/bundling-engine.js";
+import { authMiddleware } from "../../middleware/auth.js";
 
 const app = new Hono();
+
+app.use("*", authMiddleware as never);
 
 const CreateBundleBodySchema = z.object({
   ticket_ref: z.string().min(1),

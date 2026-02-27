@@ -1,8 +1,11 @@
 import { Hono } from "hono";
 import { EvidencePayloadSchema } from "@orqestra/domain";
 import * as evidenceStore from "../../services/evidence-store.js";
+import { authMiddleware } from "../../middleware/auth.js";
 
 const app = new Hono();
+
+app.use("*", authMiddleware as never);
 
 app.post("/evidence", async (c) => {
   const body = await c.req.json().catch(() => ({}));

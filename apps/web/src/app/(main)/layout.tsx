@@ -22,10 +22,10 @@ export default function MainLayout({
 
   if (!hydrated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-100 dark:bg-zinc-950">
+      <div className="flex min-h-screen items-center justify-center bg-base">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-blue-600 dark:border-zinc-700 dark:border-t-blue-400" />
-          <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-base-border border-t-primary" />
+          <span className="text-sm font-medium text-base-text-muted">
             Loading...
           </span>
         </div>

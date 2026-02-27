@@ -36,7 +36,7 @@ export function UserMenu() {
         type="button"
         onClick={handleToggle}
         aria-label="User menu"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-base transition-colors hover:bg-primary-hover"
       >
         {isLoggedIn && userEmail ? (
           userEmail[0].toUpperCase()
@@ -58,10 +58,10 @@ export function UserMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-lg border border-zinc-200 bg-white py-1 shadow-lg ring-1 ring-black/5 dark:border-zinc-700 dark:bg-zinc-900 dark:ring-white/5">
+        <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-lg border border-base-border bg-surface py-1 shadow-lg ring-1 ring-white/5">
           {userEmail && (
-            <div className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
-              <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            <div className="border-b border-base-border px-4 py-2">
+              <p className="truncate text-sm font-medium text-base-text">
                 {userEmail}
               </p>
             </div>
@@ -69,7 +69,7 @@ export function UserMenu() {
           <Link
             href="/settings"
             onClick={() => setOpen(false)}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-zinc-700 no-underline transition-colors hover:bg-zinc-100 hover:no-underline dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-base-text-muted no-underline transition-colors hover:bg-primary/5 hover:text-base-text hover:no-underline"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -92,7 +92,7 @@ export function UserMenu() {
               setOpen(false);
               logout();
             }}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-zinc-100 dark:text-red-400 dark:hover:bg-zinc-800"
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-primary/5"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

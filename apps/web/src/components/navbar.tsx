@@ -6,11 +6,11 @@ import { UserMenu } from "./user-menu";
 
 export function Navbar() {
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
+    <nav className="sticky top-0 z-40 w-full border-b border-base-border bg-surface-alt backdrop-blur">
       <div className="flex h-14 items-center justify-between px-6">
         <Link
           href="/"
-          className="text-lg font-semibold tracking-tight text-zinc-900 no-underline hover:no-underline dark:text-zinc-100"
+          className="text-lg font-semibold tracking-tight text-base-text no-underline hover:no-underline"
         >
           Orqestra
         </Link>

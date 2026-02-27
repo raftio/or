@@ -32,7 +32,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-14 flex h-[calc(100vh-3.5rem)] w-56 shrink-0 flex-col border-r border-zinc-200 bg-white/50 dark:border-zinc-800 dark:bg-zinc-950/50">
+    <aside className="sticky top-14 flex h-[calc(100vh-3.5rem)] w-56 shrink-0 flex-col border-r border-base-border bg-surface-alt">
       <nav className="flex-1 px-3 py-4">
         <ul className="flex flex-col gap-1">
           {sidebarItems.map(({ label, href, icon }) => {
@@ -43,8 +43,8 @@ export function Sidebar() {
                   href={href}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors ${
                     active
-                      ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
-                      : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-100"
+                      ? "bg-primary/10 text-primary"
+                      : "text-base-text-muted hover:bg-primary/5 hover:text-base-text"
                   }`}
                 >
                   {icon}

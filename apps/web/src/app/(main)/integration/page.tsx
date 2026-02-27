@@ -1,10 +1,10 @@
 export default function IntegrationPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
-      <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+      <h1 className="text-3xl font-bold tracking-tight text-base-text">
         Integration
       </h1>
-      <p className="mt-3 text-zinc-600 dark:text-zinc-400">
+      <p className="mt-3 text-base-text-muted">
         Connect Orqestra with your existing tools — CI/CD pipelines, IDEs, Git
         providers, and more.
       </p>
@@ -39,11 +39,11 @@ function IntegrationCard({
   description: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-6 transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+    <div className="rounded-xl border border-base-border bg-surface p-6 transition-shadow hover:shadow-md hover:shadow-glow/5">
+      <h2 className="text-lg font-semibold text-base-text">
         {title}
       </h2>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+      <p className="mt-2 text-sm leading-relaxed text-base-text-muted">
         {description}
       </p>
     </div>

@@ -66,28 +66,28 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-100 p-6 dark:bg-zinc-950">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-base p-6">
       <div
-        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.18),transparent_50%)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(96,165,250,0.12),transparent_50%)]"
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,color-mix(in_srgb,var(--color-glow)_15%,transparent),transparent_50%)]"
         aria-hidden
       />
       <div
-        className="absolute -right-20 -top-32 h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(37,99,235,0.18)_0%,transparent_70%)] opacity-40 blur-[80px] pointer-events-none dark:bg-[radial-gradient(circle,rgba(96,165,250,0.12)_0%,transparent_70%)]"
+        className="absolute -right-20 -top-32 h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--color-glow)_15%,transparent)_0%,transparent_70%)] opacity-40 blur-[80px] pointer-events-none"
         aria-hidden
       />
       <div
-        className="absolute -bottom-20 -left-16 h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.15)_0%,transparent_70%)] opacity-40 blur-[80px] pointer-events-none"
+        className="absolute -bottom-20 -left-16 h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--color-secondary)_15%,transparent)_0%,transparent_70%)] opacity-40 blur-[80px] pointer-events-none"
         aria-hidden
       />
-      <div className="relative z-10 w-full max-w-[400px] rounded-2xl border border-blue-500/35 bg-white/90 p-8 shadow-lg shadow-black/5 ring-1 ring-black/5 backdrop-blur-xl transition-all duration-200 hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/20 dark:bg-zinc-900/90 dark:ring-white/5 dark:hover:border-blue-400/50">
+      <div className="relative z-10 w-full max-w-[400px] rounded-2xl border border-primary/35 bg-surface/90 p-8 shadow-lg shadow-black/5 ring-1 ring-base-border backdrop-blur-xl transition-all duration-200 hover:border-glow/50 hover:shadow-xl hover:shadow-glow/20">
         <div className="mb-8 text-center">
           <Link
             href="/"
-            className="text-3xl font-bold tracking-tight text-zinc-900 no-underline hover:text-blue-600 dark:text-zinc-100 dark:hover:text-blue-400"
+            className="text-3xl font-bold tracking-tight text-base-text no-underline hover:text-primary"
           >
             Orqestra
           </Link>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="mt-1 text-sm text-base-text-muted">
             Create an account
           </p>
         </div>
@@ -96,7 +96,7 @@ export default function RegisterPage() {
           <div className="flex flex-col gap-2">
             <label
               htmlFor="email"
-              className="text-sm font-medium text-zinc-500 dark:text-zinc-400"
+              className="text-sm font-medium text-base-text-muted"
             >
               Email
             </label>
@@ -108,13 +108,13 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-base text-zinc-900 outline-none transition placeholder:text-zinc-500 placeholder:opacity-70 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:border-blue-400 dark:focus:ring-blue-400/20"
+              className="w-full rounded-lg border border-base-border bg-base px-4 py-3 text-base text-base-text outline-none transition placeholder:text-base-text-muted placeholder:opacity-70 focus:border-primary focus:ring-2 focus:ring-glow/20 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
           <div className="flex flex-col gap-2">
             <label
               htmlFor="password"
-              className="text-sm font-medium text-zinc-500 dark:text-zinc-400"
+              className="text-sm font-medium text-base-text-muted"
             >
               Password (at least 8 characters)
             </label>
@@ -126,13 +126,13 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-base text-zinc-900 outline-none transition placeholder:text-zinc-500 placeholder:opacity-70 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:border-blue-400 dark:focus:ring-blue-400/20"
+              className="w-full rounded-lg border border-base-border bg-base px-4 py-3 text-base text-base-text outline-none transition placeholder:text-base-text-muted placeholder:opacity-70 focus:border-primary focus:ring-2 focus:ring-glow/20 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
           <div className="flex flex-col gap-2">
             <label
               htmlFor="confirmPassword"
-              className="text-sm font-medium text-zinc-500 dark:text-zinc-400"
+              className="text-sm font-medium text-base-text-muted"
             >
               Confirm password
             </label>
@@ -144,7 +144,7 @@ export default function RegisterPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={loading}
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-base text-zinc-900 outline-none transition placeholder:text-zinc-500 placeholder:opacity-70 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:border-blue-400 dark:focus:ring-blue-400/20"
+              className="w-full rounded-lg border border-base-border bg-base px-4 py-3 text-base text-base-text outline-none transition placeholder:text-base-text-muted placeholder:opacity-70 focus:border-primary focus:ring-2 focus:ring-glow/20 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
           {error && (
@@ -155,15 +155,15 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-1 w-full rounded-lg bg-blue-600 px-5 py-3.5 text-base font-semibold text-white shadow transition hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/40 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 dark:bg-blue-500 dark:hover:bg-blue-600 dark:hover:shadow-blue-400/30"
+            className="mt-1 w-full rounded-lg bg-primary px-5 py-3.5 text-base font-semibold text-base shadow transition hover:bg-primary-hover hover:shadow-lg hover:shadow-glow/40 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading ? "Creating account…" : "Sign up"}
           </button>
         </form>
 
-        <p className="mt-6 border-t border-zinc-200 pt-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+        <p className="mt-6 border-t border-base-border pt-6 text-center text-sm text-base-text-muted">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:underline dark:text-blue-400">
+          <Link href="/login" className="text-primary hover:underline">
             Sign in
           </Link>
         </p>

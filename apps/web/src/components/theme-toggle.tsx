@@ -10,7 +10,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggleTheme}
       aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      className="theme-toggle"
+      className="fixed top-4 right-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white p-0 text-zinc-500 transition-colors hover:border-blue-500/50 hover:text-zinc-900 hover:shadow-[0_0_0_1px_rgba(37,99,235,0.35)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-blue-400/50 dark:hover:text-zinc-100"
     >
       {theme === "dark" ? (
         <svg
@@ -42,32 +42,6 @@ export function ThemeToggle() {
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
         </svg>
       )}
-      <style jsx>{`
-        .theme-toggle {
-          position: fixed;
-          top: 1rem;
-          right: 1rem;
-          z-index: 50;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 2.5rem;
-          height: 2.5rem;
-          padding: 0;
-          color: var(--text-muted);
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          cursor: pointer;
-          transition: color 0.2s, background 0.2s, border-color 0.2s,
-            box-shadow 0.2s;
-        }
-        .theme-toggle:hover {
-          color: var(--text);
-          border-color: var(--border-glow);
-          box-shadow: 0 0 0 1px var(--border-glow);
-        }
-      `}</style>
     </button>
   );
 }

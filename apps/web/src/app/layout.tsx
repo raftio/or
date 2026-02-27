@@ -11,12 +11,17 @@ export const metadata: Metadata = {
 const themeScript = `
 (function() {
   var s = localStorage.getItem('orqestra_theme');
+  var dark = false;
   if (s === 'light' || s === 'dark') {
-    document.documentElement.setAttribute('data-theme', s);
+    dark = s === 'dark';
   } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    document.documentElement.setAttribute('data-theme', 'dark');
+    dark = true;
+  }
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  if (dark) {
+    document.documentElement.classList.add('dark');
   } else {
-    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.classList.remove('dark');
   }
 })();
 `;

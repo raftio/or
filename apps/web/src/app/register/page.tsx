@@ -48,12 +48,14 @@ export default function RegisterPage() {
         return;
       }
       if (data.token) {
-        typeof window !== "undefined" &&
+        if (typeof window !== "undefined") {
           localStorage.setItem("orqestra_token", data.token);
+        }
       }
       if (data.user?.email) {
-        typeof window !== "undefined" &&
+        if (typeof window !== "undefined") {
           localStorage.setItem("orqestra_user", data.user.email);
+        }
       }
       router.push("/");
       router.refresh();
@@ -65,20 +67,40 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="auth-wrap">
-      <div className="auth-blob auth-blob-1" aria-hidden />
-      <div className="auth-blob auth-blob-2" aria-hidden />
-      <div className="auth-card">
-        <div className="auth-header">
-          <Link href="/" className="auth-logo">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-100 p-6 dark:bg-zinc-950">
+      <div
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(37,99,235,0.18),transparent_50%)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(96,165,250,0.12),transparent_50%)]"
+        aria-hidden
+      />
+      <div
+        className="absolute -right-20 -top-32 h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,rgba(37,99,235,0.18)_0%,transparent_70%)] opacity-40 blur-[80px] pointer-events-none dark:bg-[radial-gradient(circle,rgba(96,165,250,0.12)_0%,transparent_70%)]"
+        aria-hidden
+      />
+      <div
+        className="absolute -bottom-20 -left-16 h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.15)_0%,transparent_70%)] opacity-40 blur-[80px] pointer-events-none"
+        aria-hidden
+      />
+      <div className="relative z-10 w-full max-w-[400px] rounded-2xl border border-blue-500/35 bg-white/90 p-8 shadow-lg shadow-black/5 ring-1 ring-black/5 backdrop-blur-xl transition-all duration-200 hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/20 dark:bg-zinc-900/90 dark:ring-white/5 dark:hover:border-blue-400/50">
+        <div className="mb-8 text-center">
+          <Link
+            href="/"
+            className="text-3xl font-bold tracking-tight text-zinc-900 no-underline hover:text-blue-600 dark:text-zinc-100 dark:hover:text-blue-400"
+          >
             Orqestra
           </Link>
-          <p className="auth-tagline">Create an account</p>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Create an account
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="auth-field">
-            <label htmlFor="email">Email</label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="email"
+              className="text-sm font-medium text-zinc-500 dark:text-zinc-400"
+            >
+              Email
+            </label>
             <input
               id="email"
               type="email"
@@ -87,10 +109,16 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-base text-zinc-900 outline-none transition placeholder:text-zinc-500 placeholder:opacity-70 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:border-blue-400 dark:focus:ring-blue-400/20"
             />
           </div>
-          <div className="auth-field">
-            <label htmlFor="password">Password (at least 8 characters)</label>
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="password"
+              className="text-sm font-medium text-zinc-500 dark:text-zinc-400"
+            >
+              Password (at least 8 characters)
+            </label>
             <input
               id="password"
               type="password"
@@ -99,10 +127,16 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-base text-zinc-900 outline-none transition placeholder:text-zinc-500 placeholder:opacity-70 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:border-blue-400 dark:focus:ring-blue-400/20"
             />
           </div>
-          <div className="auth-field">
-            <label htmlFor="confirmPassword">Confirm password</label>
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="confirmPassword"
+              className="text-sm font-medium text-zinc-500 dark:text-zinc-400"
+            >
+              Confirm password
+            </label>
             <input
               id="confirmPassword"
               type="password"
@@ -111,174 +145,30 @@ export default function RegisterPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={loading}
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-base text-zinc-900 outline-none transition placeholder:text-zinc-500 placeholder:opacity-70 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400 dark:focus:border-blue-400 dark:focus:ring-blue-400/20"
             />
           </div>
-          {error && <p className="auth-error">{error}</p>}
-          <button type="submit" className="auth-submit" disabled={loading}>
+          {error && (
+            <p className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="mt-1 w-full rounded-lg bg-blue-600 px-5 py-3.5 text-base font-semibold text-white shadow transition hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/40 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 dark:bg-blue-500 dark:hover:bg-blue-600 dark:hover:shadow-blue-400/30"
+          >
             {loading ? "Creating account…" : "Sign up"}
           </button>
         </form>
 
-        <p className="auth-footer">
-          Already have an account? <Link href="/login">Sign in</Link>
+        <p className="mt-6 border-t border-zinc-200 pt-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+          Already have an account?{" "}
+          <Link href="/login" className="text-blue-600 hover:underline dark:text-blue-400">
+            Sign in
+          </Link>
         </p>
       </div>
-
-      <style jsx>{`
-        .auth-wrap {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 1.5rem;
-          position: relative;
-          overflow: hidden;
-          background: radial-gradient(
-              ellipse 80% 50% at 50% -20%,
-              var(--accent-glow-soft),
-              transparent 50%
-            ),
-            var(--bg);
-        }
-        .auth-blob {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(80px);
-          opacity: 0.4;
-          pointer-events: none;
-        }
-        .auth-blob-1 {
-          width: 400px;
-          height: 400px;
-          background: radial-gradient(circle, var(--accent-glow-soft) 0%, transparent 70%);
-          top: -120px;
-          right: -80px;
-        }
-        .auth-blob-2 {
-          width: 320px;
-          height: 320px;
-          background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
-          bottom: -80px;
-          left: -60px;
-        }
-        .auth-card {
-          width: 100%;
-          max-width: 400px;
-          position: relative;
-          z-index: 1;
-          background: var(--surface-glass);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border: 1px solid var(--border-glow);
-          border-radius: 16px;
-          padding: 2rem;
-          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06),
-            0 0 0 1px rgba(0, 0, 0, 0.04),
-            0 0 40px var(--accent-glow-soft);
-          transition: box-shadow 0.25s ease, border-color 0.25s ease;
-        }
-        .auth-card:hover {
-          border-color: rgba(37, 99, 235, 0.5);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08),
-            0 0 0 1px rgba(0, 0, 0, 0.06),
-            0 0 48px rgba(37, 99, 235, 0.2);
-        }
-        .auth-header {
-          text-align: center;
-          margin-bottom: 2rem;
-        }
-        .auth-logo {
-          font-size: 1.75rem;
-          font-weight: 700;
-          letter-spacing: -0.02em;
-          color: var(--text);
-          text-decoration: none;
-        }
-        .auth-logo:hover {
-          color: var(--accent);
-          text-decoration: none;
-        }
-        .auth-tagline {
-          margin: 0.25rem 0 0;
-          font-size: 0.9rem;
-          color: var(--text-muted);
-        }
-        .auth-form {
-          display: flex;
-          flex-direction: column;
-          gap: 1.25rem;
-        }
-        .auth-field {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-        .auth-field label {
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: var(--text-muted);
-        }
-        .auth-field input {
-          width: 100%;
-          padding: 0.75rem 1rem;
-          font-size: 1rem;
-          font-family: inherit;
-          color: var(--text);
-          background: var(--input-bg);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          outline: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .auth-field input:focus {
-          border-color: var(--accent);
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2),
-            0 0 16px var(--accent-glow-soft);
-        }
-        .auth-field input:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-        .auth-error {
-          margin: 0;
-          padding: 0.75rem 1rem;
-          font-size: 0.875rem;
-          color: var(--error);
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.3);
-          border-radius: 8px;
-        }
-        .auth-submit {
-          margin-top: 0.25rem;
-          padding: 0.875rem 1.25rem;
-          font-size: 1rem;
-          font-weight: 600;
-          font-family: inherit;
-          color: var(--button-text);
-          background: var(--accent);
-          border: none;
-          border-radius: 10px;
-          cursor: pointer;
-          transition: background 0.2s, transform 0.1s, box-shadow 0.25s ease;
-          box-shadow: 0 0 0 rgba(37, 99, 235, 0);
-        }
-        .auth-submit:hover:not(:disabled) {
-          background: var(--accent-hover);
-          box-shadow: 0 0 24px var(--accent-glow);
-        }
-        .auth-submit:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-        .auth-footer {
-          margin: 1.5rem 0 0;
-          padding-top: 1.5rem;
-          border-top: 1px solid var(--border);
-          font-size: 0.875rem;
-          color: var(--text-muted);
-          text-align: center;
-        }
-      `}</style>
     </div>
   );
 }

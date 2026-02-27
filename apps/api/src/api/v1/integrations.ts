@@ -5,6 +5,7 @@ import { authMiddleware } from "../../middleware/auth.js";
 import { requireWorkspaceAdmin, requireWorkspaceMember } from "../../middleware/workspace-auth.js";
 import { testJiraConnection } from "../../adapters/ticket/jira.js";
 import { testGitHubConnection } from "../../adapters/ticket/github-issues.js";
+import { testNotionConnection } from "../../adapters/document/notion.js";
 
 type Env = {
   Variables: {
@@ -252,6 +253,91 @@ app.post("/workspaces/:id/integrations/github/test", async (c) => {
   try {
     const user = await testGitHubConnection(parsed.data.access_token);
     return c.json({ ok: true, user });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Connection failed";
+    return c.json({ ok: false, error: msg }, 400);
+  }
+});
+
+// ── Upsert Notion configuration ──────────────────────────────────────
+
+const NotionConfigSchema = z.object({
+  api_token: z.string().min(1, "API token is required"),
+});
+
+app.put("/workspaces/:id/integrations/notion", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("id");
+
+  const check = await requireWorkspaceAdmin(workspaceId, userId);
+  if (!check.ok) return c.json({ error: check.error }, check.status);
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = NotionConfigSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Validation failed", details: parsed.error.flatten() }, 400);
+  }
+
+  const config = { api_token: parsed.data.api_token };
+
+  const result = await query<{
+    id: string;
+    provider: string;
+    created_at: string;
+    updated_at: string;
+  }>(
+    `INSERT INTO workspace_integrations (workspace_id, provider, config)
+     VALUES ($1, 'notion', $2::jsonb)
+     ON CONFLICT (workspace_id, provider)
+     DO UPDATE SET config = $2::jsonb, updated_at = now()
+     RETURNING id, provider, created_at, updated_at`,
+    [workspaceId, JSON.stringify(config)],
+  );
+
+  const row = result.rows[0];
+  return c.json({
+    integration: {
+      ...row,
+      config: { api_token: maskToken(config.api_token) },
+    },
+  }, 200);
+});
+
+// ── Delete (disconnect) Notion ───────────────────────────────────────
+
+app.delete("/workspaces/:id/integrations/notion", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("id");
+
+  const check = await requireWorkspaceAdmin(workspaceId, userId);
+  if (!check.ok) return c.json({ error: check.error }, check.status);
+
+  await query(
+    `DELETE FROM workspace_integrations WHERE workspace_id = $1 AND provider = 'notion'`,
+    [workspaceId],
+  );
+
+  return c.json({ deleted: true });
+});
+
+// ── Test Notion connection ───────────────────────────────────────────
+
+app.post("/workspaces/:id/integrations/notion/test", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("id");
+
+  const check = await requireWorkspaceMember(workspaceId, userId);
+  if (!check.ok) return c.json({ error: check.error }, check.status);
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = z.object({ api_token: z.string().min(1) }).safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Validation failed", details: parsed.error.flatten() }, 400);
+  }
+
+  try {
+    const bot = await testNotionConnection(parsed.data.api_token);
+    return c.json({ ok: true, bot });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Connection failed";
     return c.json({ ok: false, error: msg }, 400);

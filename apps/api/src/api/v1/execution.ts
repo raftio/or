@@ -24,6 +24,7 @@ const CreateBundleBodySchema = z.object({
   ticket_ref: z.string().min(1),
   spec_ref: z.string().optional(),
   build_from_ticket: z.boolean().optional(),
+  use_ai: z.boolean().optional(),
   tasks: z
     .array(
       z.object({
@@ -76,6 +77,7 @@ app.post("/workspaces/:workspaceId/bundles", async (c) => {
       workspace_id: workspaceId,
       ticket_id: data.ticket_ref,
       spec_ref: data.spec_ref,
+      use_ai: data.use_ai,
     });
     if (!bundle) {
       return c.json({ error: "Ticket not found or bundling failed" }, 404);
@@ -165,6 +167,7 @@ app.post("/bundles", async (c) => {
       workspace_id: workspaceId,
       ticket_id: data.ticket_ref,
       spec_ref: data.spec_ref,
+      use_ai: data.use_ai,
     });
     if (!bundle) {
       return c.json({ error: "Ticket not found or bundling failed" }, 404);

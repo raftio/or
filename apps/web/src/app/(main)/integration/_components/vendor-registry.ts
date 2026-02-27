@@ -3,10 +3,12 @@ import type { ComponentType } from "react";
 import { JiraCard } from "./jira-card";
 import { GitHubIssuesCard } from "./github-issues-card";
 import { IdeCard } from "./ide-card";
+import { NotionCard } from "./notion-card";
 
 import { JiraForm } from "./jira-form";
 import { GitHubIssuesForm } from "./github-issues-form";
 import { IdeSetup } from "./ide-setup";
+import { NotionForm } from "./notion-form";
 
 export interface IntegrationFormProps {
   workspaceId: string;
@@ -40,6 +42,13 @@ export const VENDORS: VendorConfig[] = [
     integrationProvider: "github",
     cardComponent: GitHubIssuesCard,
     formComponent: GitHubIssuesForm,
+  },
+  {
+    id: "notion",
+    title: "Notion",
+    integrationProvider: "notion",
+    cardComponent: NotionCard,
+    formComponent: NotionForm,
   },
   {
     id: "ide",

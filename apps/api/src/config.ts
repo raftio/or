@@ -33,3 +33,45 @@ export function getJwtSecret(): string {
   }
   return secret;
 }
+
+// ── Document Provider ─────────────────────────────────────────────────────
+
+export function getDocumentProvider(): "stub" | "notion" {
+  const v = process.env.DOCUMENT_PROVIDER?.toLowerCase();
+  if (v === "notion") return v;
+  return "stub";
+}
+
+export function getNotionApiKey(): string | undefined {
+  return process.env.NOTION_API_KEY;
+}
+
+// ── AI Decomposer ────────────────────────────────────────────────────────
+
+export type AiDecomposerProvider = "stub" | "openai" | "anthropic";
+
+const DEFAULT_MODELS: Record<Exclude<AiDecomposerProvider, "stub">, string> = {
+  openai: "gpt-4o-mini",
+  anthropic: "claude-sonnet-4-20250514",
+};
+
+export function getAiDecomposerProvider(): AiDecomposerProvider {
+  const v = process.env.AI_DECOMPOSER_PROVIDER?.toLowerCase();
+  if (v === "openai" || v === "anthropic") return v;
+  return "stub";
+}
+
+export function getAiDecomposerModel(): string {
+  const explicit = process.env.AI_DECOMPOSER_MODEL?.trim();
+  if (explicit) return explicit;
+  const provider = getAiDecomposerProvider();
+  return provider === "stub" ? "" : DEFAULT_MODELS[provider];
+}
+
+export function getOpenAiApiKey(): string | undefined {
+  return process.env.OPENAI_API_KEY;
+}
+
+export function getAnthropicApiKey(): string | undefined {
+  return process.env.ANTHROPIC_API_KEY;
+}

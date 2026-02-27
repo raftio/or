@@ -14,6 +14,8 @@ export interface SynthesizedContextSection {
 
 export interface SynthesizedContext {
   ticket_id: string;
+  /** Canonical key from the ticket provider (e.g. "owner/repo#42"). */
+  ticket_key: string;
   ticket_title: string;
   ticket_description: string;
   acceptance_criteria: SynthesizedContextAc[];

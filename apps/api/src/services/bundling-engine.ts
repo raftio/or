@@ -40,7 +40,7 @@ export async function buildBundle(
   if (!context) return null;
 
   const spec_ref = input.spec_ref ?? "";
-  const ticket_ref = input.ticket_id;
+  const ticket_ref = context.ticket_key;
 
   const tasks: ExecutionBundle["tasks"] = context.sections?.length
     ? context.sections.map((s) => ({

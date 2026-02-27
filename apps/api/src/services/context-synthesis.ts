@@ -61,6 +61,7 @@ export async function synthesizeContext(input: {
 
   const context: SynthesizedContext = {
     ticket_id: input.ticket_id,
+    ticket_key: ticket.key,
     ticket_title: ticket.title,
     ticket_description: ticket.description,
     acceptance_criteria: Array.from(acMap.values()),

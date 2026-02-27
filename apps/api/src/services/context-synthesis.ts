@@ -76,6 +76,23 @@ export async function synthesizeContext(input: {
   return context;
 }
 
-export function invalidateContext(ticket_id: string, spec_ref?: string): void {
+export function invalidateContext(ticket_id: string, spec_ref?: string, workspaceId?: string): void {
+  if (workspaceId) {
+    cache.delete(cacheKey(ticket_id, spec_ref, workspaceId));
+  }
+  // Also clear non-workspace-scoped entry for backward compatibility
   cache.delete(cacheKey(ticket_id, spec_ref));
+}
+
+/**
+ * Invalidate both context and bundle caches for a given ticket.
+ * Call this when a ticket or spec is updated externally.
+ */
+export function invalidateForTicket(workspaceId: string, ticketId: string, specRef?: string): void {
+  invalidateContext(ticketId, specRef, workspaceId);
+
+  // Lazy-import to avoid circular dependency
+  import("./bundle-store.js").then((store) => {
+    store.purgeCacheForTicket(workspaceId, ticketId);
+  });
 }

@@ -96,6 +96,32 @@ export async function ensureIntegrationTables(): Promise<void> {
   `);
 }
 
+export async function ensureBundleTables(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS workspace_bundles (
+      id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id             UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      ticket_ref               TEXT NOT NULL,
+      spec_ref                 TEXT NOT NULL DEFAULT '',
+      version                  INTEGER NOT NULL,
+      content_hash             TEXT NOT NULL,
+      tasks                    JSONB NOT NULL,
+      dependencies             JSONB,
+      acceptance_criteria_refs JSONB NOT NULL DEFAULT '[]',
+      context                  JSONB,
+      created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(workspace_id, ticket_ref, version)
+    );
+    CREATE INDEX IF NOT EXISTS idx_bundles_workspace_ticket
+      ON workspace_bundles(workspace_id, ticket_ref);
+    CREATE INDEX IF NOT EXISTS idx_bundles_hash
+      ON workspace_bundles(workspace_id, ticket_ref, content_hash);
+    CREATE INDEX IF NOT EXISTS idx_bundles_created
+      ON workspace_bundles(workspace_id, created_at DESC);
+  `);
+}
+
 export async function ensureApiTokenTables(): Promise<void> {
   await query(`
     CREATE TABLE IF NOT EXISTS workspace_api_tokens (

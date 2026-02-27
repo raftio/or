@@ -7,11 +7,12 @@ import { synthesizeContext } from "./context-synthesis.js";
 import type { ExecutionBundle } from "@orqestra/domain";
 
 export interface BundlingEngineInput {
+  workspace_id: string;
   ticket_id: string;
   spec_ref?: string;
 }
 
-function contentHash(bundle: {
+export function contentHash(bundle: {
   tasks: ExecutionBundle["tasks"];
   acceptance_criteria_refs: string[];
   spec_ref: string;
@@ -24,19 +25,17 @@ function contentHash(bundle: {
   return createHash("sha256").update(payload).digest("hex");
 }
 
-function now(): string {
-  return new Date().toISOString();
-}
-
 /**
- * Build execution bundle from ticket (+ optional spec). Idempotent: same input → same or existing bundle.
+ * Build execution bundle from ticket (+ optional spec).
+ * Idempotent: same content → returns existing bundle without creating a new version.
  */
 export async function buildBundle(
-  input: BundlingEngineInput
+  input: BundlingEngineInput,
 ): Promise<ExecutionBundle | null> {
   const context = await synthesizeContext({
     ticket_id: input.ticket_id,
     spec_ref: input.spec_ref,
+    workspace_id: input.workspace_id,
   });
   if (!context) return null;
 
@@ -58,7 +57,7 @@ export async function buildBundle(
       ];
 
   const acceptance_criteria_refs = context.acceptance_criteria.map(
-    (ac) => ac.id
+    (ac) => ac.id,
   );
 
   const dependencies =
@@ -75,24 +74,23 @@ export async function buildBundle(
     spec_ref,
   });
 
-  const existing = bundleStore.getBundlesByTicket(ticket_ref);
-  const last = existing.length
-    ? existing.reduce((a, b) => (a.version >= b.version ? a : b))
-    : null;
+  // Fast path: check DB hash index for existing identical bundle
+  const existingByHash = await bundleStore.getBundleByHash(
+    input.workspace_id,
+    ticket_ref,
+    candidateHash,
+  );
+  if (existingByHash) return existingByHash;
 
-  if (last) {
-    const lastHash = contentHash({
-      tasks: last.tasks,
-      acceptance_criteria_refs: last.acceptance_criteria_refs,
-      spec_ref: last.spec_ref,
-    });
-    if (lastHash === candidateHash) return last;
-  }
+  // Determine next version number
+  const latest = await bundleStore.getLatestBundle(
+    input.workspace_id,
+    ticket_ref,
+  );
+  const nextVersion = latest ? latest.version + 1 : 1;
 
-  const nextVersion = last ? last.version + 1 : 1;
   const id = crypto.randomUUID();
-  const created_at = now();
-  const updated_at = created_at;
+  const now = new Date().toISOString();
 
   const bundle: ExecutionBundle = {
     id,
@@ -106,10 +104,9 @@ export async function buildBundle(
       excerpts: context.excerpts,
       related_ticket_ids: context.related_ticket_ids,
     },
-    created_at,
-    updated_at,
+    created_at: now,
+    updated_at: now,
   };
 
-  bundleStore.storeBundle(bundle);
-  return bundle;
+  return bundleStore.storeBundle(input.workspace_id, bundle, candidateHash);
 }

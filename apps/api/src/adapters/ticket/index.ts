@@ -31,17 +31,21 @@ export async function createTicketProviderForWorkspace(
 
     for (const row of result.rows) {
       if (row.provider === "jira") {
-        const { base_url, email, api_token } = row.config;
+        const base_url = row.config.base_url?.trim();
+        const email = row.config.email?.trim();
+        const api_token = row.config.api_token?.trim();
         if (base_url && email && api_token) {
           return createJiraTicketProvider(base_url, email, api_token);
         }
       }
       if (row.provider === "linear") {
-        const { api_key } = row.config;
+        const api_key = row.config.api_key?.trim();
         if (api_key) return createLinearTicketProvider(api_key);
       }
       if (row.provider === "github") {
-        const { owner, repo, access_token } = row.config;
+        const owner = row.config.owner?.trim();
+        const repo = row.config.repo?.trim();
+        const access_token = row.config.access_token?.trim();
         if (owner && repo && access_token) {
           return createGitHubIssuesProvider(owner, repo, access_token);
         }

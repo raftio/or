@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
+import { UserMenu } from "./user-menu";
 
 export function Navbar() {
   return (
@@ -16,12 +17,7 @@ export function Navbar() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <Link
-            href="/login"
-            className="rounded-md bg-blue-600 px-3.5 py-1.5 text-sm font-medium text-white no-underline transition-colors hover:bg-blue-700 hover:no-underline dark:bg-blue-500 dark:hover:bg-blue-600"
-          >
-            Sign in
-          </Link>
+          <UserMenu />
         </div>
       </div>
     </nav>

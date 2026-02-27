@@ -57,8 +57,7 @@ export default function RegisterPage() {
           localStorage.setItem("orqestra_user", data.user.email);
         }
       }
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
     } catch {
       setError("Registration failed. Please try again.");
     } finally {

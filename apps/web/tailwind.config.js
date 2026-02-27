@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        outfit: ["Outfit", "system-ui", "sans-serif"],
+        grotesk: ["Space Grotesk", "system-ui", "sans-serif"],
       },
     },
   },

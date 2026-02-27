@@ -45,8 +45,7 @@ export default function LoginPage() {
           localStorage.setItem("orqestra_user", data.user.email);
         }
       }
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
     } catch {
       setError("Login failed. Please try again.");
     } finally {

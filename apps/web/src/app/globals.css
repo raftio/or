@@ -1,4 +1,4 @@
-@import "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap";
+@import "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap";
 
 @tailwind base;
 @tailwind components;
@@ -9,7 +9,7 @@
     @apply min-h-full;
   }
   body {
-    @apply min-h-full m-0 font-outfit bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
+    @apply min-h-full m-0 font-grotesk bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
     -webkit-font-smoothing: antialiased;
   }
   a {

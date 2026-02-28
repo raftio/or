@@ -1,36 +1,31 @@
 {
-  "name": "@orca/api",
+  "name": "@orca/agent",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.49",
-    "@ai-sdk/google": "^3.0.34",
     "@ai-sdk/openai": "^3.0.36",
-    "@hono/node-server": "^1.13.0",
-    "@orca/agent": "workspace:*",
     "@orca/domain": "workspace:*",
     "ai": "^6.0.104",
-    "bcryptjs": "^2.4.3",
-    "dotenv": "^16.4.5",
-    "hono": "^4.6.0",
-    "jose": "^5.9.0",
-    "pg": "^8.13.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^22.0.0",
-    "@types/pg": "^8.11.0",
-    "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^4.0.18"
   }

@@ -7,8 +7,9 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "build": "pnpm -r run build",
-    "dev": "pnpm --filter @orca/api run dev",
-    "dev:api": "pnpm --filter @orca/api run dev",
+    "build:packages": "pnpm --filter './packages/*' -r run build",
+    "dev": "pnpm run build:packages && pnpm --filter @orca/api run dev",
+    "dev:api": "pnpm run build:packages && pnpm --filter @orca/api run dev",
     "dev:web": "pnpm --filter @orca/web run dev",
     "dev:worker": "pnpm --filter @orca/worker run dev",
     "start": "pnpm --filter @orca/api run start",

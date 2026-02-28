@@ -75,3 +75,25 @@ export function getOpenAiApiKey(): string | undefined {
 export function getAnthropicApiKey(): string | undefined {
   return process.env.ANTHROPIC_API_KEY;
 }
+
+// ── AI Chat Agent ─────────────────────────────────────────────────────────
+
+export type AiChatProvider = "stub" | "openai" | "anthropic";
+
+const DEFAULT_CHAT_MODELS: Record<Exclude<AiChatProvider, "stub">, string> = {
+  openai: "gpt-4o-mini",
+  anthropic: "claude-sonnet-4-20250514",
+};
+
+export function getAiChatProvider(): AiChatProvider {
+  const v = process.env.AI_CHAT_PROVIDER?.toLowerCase();
+  if (v === "openai" || v === "anthropic") return v;
+  return "stub";
+}
+
+export function getAiChatModel(): string {
+  const explicit = process.env.AI_CHAT_MODEL?.trim();
+  if (explicit) return explicit;
+  const provider = getAiChatProvider();
+  return provider === "stub" ? "" : DEFAULT_CHAT_MODELS[provider];
+}

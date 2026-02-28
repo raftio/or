@@ -34,6 +34,10 @@ npm start
 | `TICKET_PROVIDER` | `stub` (default), `linear`, or `jira` |
 | `LINEAR_API_KEY` | Required when `TICKET_PROVIDER=linear` |
 | `CONTEXT_CACHE_TTL_MINUTES` | Context cache TTL (default: 5) |
+| `AI_CHAT_PROVIDER` | `stub` (default), `openai`, or `anthropic` |
+| `AI_CHAT_MODEL` | Override chat model (defaults: `gpt-4o-mini` / `claude-sonnet-4-20250514`) |
+| `OPENAI_API_KEY` | Required for OpenAI providers |
+| `ANTHROPIC_API_KEY` | Required for Anthropic providers |
 
 ## Main endpoints
 
@@ -53,6 +57,25 @@ npm start
 | POST | `/v1/evidence/validate` | Validate evidence payload (RFC-004 body) |
 | POST | `/v1/workflow/trigger` | Workflow orchestration (501 stub) |
 | GET | `/v1/outcomes?releaseId=<id>` | Outcome tracking (501 stub) |
+
+### AI Chat Agent
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/v1/workspaces/:id/chat` | Send messages, receive streaming AI response |
+| GET | `/v1/workspaces/:id/chat/conversations` | List chat conversations |
+| GET | `/v1/workspaces/:id/chat/conversations/:id` | Get conversation with messages |
+| DELETE | `/v1/workspaces/:id/chat/conversations/:id` | Delete conversation |
+
+The chat agent is workspace-aware and injects bundle/evidence context into its responses. Configure `AI_CHAT_PROVIDER` to enable. See [RFC-022](docs/rfc/rfc-022.md) for details.
+
+### Packages
+
+| Package | Description |
+|---------|-------------|
+| `@orca/agent` | Standalone AI chat agent (provider-agnostic, streamable) |
+| `@orca/domain` | Shared Zod schemas and types |
+| `@orca/sdk` | Typed API client |
 
 ### Examples (curl)
 

@@ -177,6 +177,33 @@ export async function ensureEvidenceTables(): Promise<void> {
   `);
 }
 
+export async function ensureChatTables(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS workspace_chat_conversations (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title        TEXT NOT NULL DEFAULT 'New conversation',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_chat_conv_workspace_user
+      ON workspace_chat_conversations(workspace_id, user_id);
+    CREATE INDEX IF NOT EXISTS idx_chat_conv_updated
+      ON workspace_chat_conversations(workspace_id, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS workspace_chat_messages (
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      conversation_id UUID NOT NULL REFERENCES workspace_chat_conversations(id) ON DELETE CASCADE,
+      role            TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+      content         TEXT NOT NULL,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_chat_msg_conversation
+      ON workspace_chat_messages(conversation_id, created_at ASC);
+  `);
+}
+
 export async function closePool(): Promise<void> {
   if (pool) {
     await pool.end();

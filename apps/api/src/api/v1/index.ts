@@ -7,6 +7,7 @@ import outcome from "./outcome.js";
 import workspaces from "./workspaces.js";
 import integrations from "./integrations.js";
 import apiTokens from "./api-tokens.js";
+import chat from "./chat.js";
 
 const v1 = new Hono().basePath("/v1");
 
@@ -18,5 +19,6 @@ v1.route("/", outcome);
 v1.route("/", workspaces);
 v1.route("/", integrations);
 v1.route("/", apiTokens);
+v1.route("/", chat);
 
 export default v1;

@@ -18,9 +18,12 @@ export interface IntegrationFormProps {
   onUpdate: () => void;
 }
 
+export type SourceType = "tasks" | "docs" | "code" | "evidence" | "cicd";
+
 export interface VendorConfig {
   id: string;
   title: string;
+  sourceType: SourceType;
   /** Provider key in workspace_integrations. Undefined = no backend state. */
   integrationProvider?: string;
   cardComponent: ComponentType<{ connected: boolean; onClick: () => void }>;
@@ -32,6 +35,7 @@ export const VENDORS: VendorConfig[] = [
   {
     id: "jira",
     title: "Jira Cloud",
+    sourceType: "tasks",
     integrationProvider: "jira",
     cardComponent: JiraCard,
     formComponent: JiraForm,
@@ -39,6 +43,7 @@ export const VENDORS: VendorConfig[] = [
   {
     id: "github",
     title: "GitHub Issues",
+    sourceType: "tasks",
     integrationProvider: "github",
     cardComponent: GitHubIssuesCard,
     formComponent: GitHubIssuesForm,
@@ -46,6 +51,7 @@ export const VENDORS: VendorConfig[] = [
   {
     id: "notion",
     title: "Notion",
+    sourceType: "docs",
     integrationProvider: "notion",
     cardComponent: NotionCard,
     formComponent: NotionForm,
@@ -53,6 +59,7 @@ export const VENDORS: VendorConfig[] = [
   {
     id: "ide",
     title: "IDE / Agent",
+    sourceType: "code",
     cardComponent: IdeCard,
     formComponent: IdeSetup,
   },

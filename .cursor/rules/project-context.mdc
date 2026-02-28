@@ -1,0 +1,44 @@
+---
+description: Orca project context and monorepo structure
+alwaysApply: true
+---
+
+# Orca Project Context
+
+Orca is a **control plane** for the flow: Intent → Execution → Evidence → Outcome. It connects intent (specs, tickets) with execution (AI-assisted code) and evidence (tests, CI) to validate outcomes.
+
+## Monorepo Structure (pnpm workspaces)
+
+**Apps:**
+- `apps/api` — Hono + Node.js control-plane API (auth, workspaces, bundles, evidence, chat, integrations)
+- `apps/web` — Next.js 15 web app (React 18, Tailwind, App Router)
+- `apps/worker` — Background worker for periodic bundle sync
+
+**Packages:**
+- `packages/agent` — AI chat agent (provider-agnostic, streaming via Vercel AI SDK)
+- `packages/domain` — Shared Zod schemas and TypeScript types
+- `packages/sdk` — Typed API client for Orca API
+- `packages/ui` — Shared React components
+- `packages/utils` — Shared utilities
+- `packages/config` — Shared ESLint, TSConfig, Prettier configs
+
+## Tech Stack
+
+- TypeScript (strict, ESM with `"type": "module"`)
+- Node >= 20, pnpm@9
+- Database: PostgreSQL (pg)
+- Testing: Vitest
+- Linting: ESLint 9 (flat config), Prettier
+
+## Key Integrations
+
+Jira, Linear, GitHub Issues (tickets), Notion (documents), OpenAI / Anthropic / Google (AI providers).
+
+## Related Repos
+
+- `orca-github` — GitHub Action for submitting CI evidence
+- `vsc-orca` — VS Code extension for bundles and evidence
+
+## Documentation
+
+Product docs in `docs/orca.md`. RFCs in `docs/rfc/` (rfc-000 through rfc-022).

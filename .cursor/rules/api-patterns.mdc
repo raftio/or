@@ -1,0 +1,69 @@
+---
+description: Hono API patterns - routes, services, adapters, middleware
+globs: "apps/api/**/*.ts"
+alwaysApply: false
+---
+
+# API Patterns
+
+## Route Structure
+
+Each domain has its own Hono sub-app in `apps/api/src/api/v1/`, mounted in `api/v1/index.ts`:
+
+```typescript
+const app = new Hono<Env>();
+app.use("*", authMiddleware as never);
+
+app.post("/workspaces/:workspaceId/resource", async (c) => {
+  const workspaceId = c.req.param("workspaceId");
+  const userId = c.get("userId");
+
+  const memberCheck = await requireWorkspaceMember(workspaceId, userId);
+  if (!memberCheck.ok) {
+    return c.json({ error: memberCheck.error }, memberCheck.status);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = RequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Validation failed", details: parsed.error.flatten() }, 400);
+  }
+
+  // ... business logic ...
+  return c.json(result);
+});
+```
+
+## Services
+
+Stateless async functions in `src/services/`. Use the shared `query<T>()` from `src/db/index.ts`:
+
+```typescript
+export async function getResource(id: string): Promise<ResourceRow | null> {
+  const result = await query<ResourceRow>(
+    `SELECT * FROM resources WHERE id = $1`,
+    [id],
+  );
+  return result.rows[0] ?? null;
+}
+```
+
+Map DB rows to domain models with dedicated functions: `rowToEvidence()`, `rowToBundle()`, etc.
+
+## Adapters
+
+Contract + factory + implementations pattern in `src/adapters/`:
+
+1. **Contract** (`contract.ts`): interface defining the adapter API
+2. **Factory** (`index.ts`): `createXxxProviderForWorkspace(workspaceId)` reads workspace config, selects implementation
+3. **Implementations**: one file per provider (e.g. `jira.ts`, `linear.ts`, `github-issues.ts`)
+
+## Auth Middleware
+
+- `authMiddleware`: supports API tokens (`oq_` prefix) and JWT
+- `requireWorkspaceMember(workspaceId, userId)`: returns `{ ok: true } | { ok: false; status; error }`
+- `requireWorkspaceAdmin(workspaceId, userId)`: same pattern for admin-only routes
+
+## AI Tools
+
+Tool factories in `src/tools/` follow `ToolFactory = (ctx: ToolContext) => ToolSet` pattern. Each tool uses Zod `inputSchema` and an `execute` function.

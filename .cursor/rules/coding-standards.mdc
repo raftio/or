@@ -1,0 +1,57 @@
+---
+description: TypeScript coding standards and conventions
+globs: "**/*.ts,**/*.tsx"
+alwaysApply: false
+---
+
+# Coding Standards
+
+## ESM Imports
+
+Always use `.js` extension in relative imports (TypeScript ESM resolution):
+
+```typescript
+// Correct
+import { query } from "../db/index.js";
+import type { TicketDto } from "./types.js";
+
+// Wrong
+import { query } from "../db/index";
+```
+
+## Zod Validation
+
+Define schemas first, then infer types:
+
+```typescript
+export const MySchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+});
+export type MyType = z.infer<typeof MySchema>;
+```
+
+For request validation, use `safeParse` and return structured errors:
+
+```typescript
+const parsed = MySchema.safeParse(body);
+if (!parsed.success) {
+  return c.json({ error: "Validation failed", details: parsed.error.flatten() }, 400);
+}
+```
+
+## TypeScript
+
+- Strict mode enabled. Avoid `any` — use generics or `unknown`.
+- Use `type` imports for type-only references: `import type { Foo } from "./foo.js"`
+- Prefer interfaces for object shapes, types for unions/intersections.
+
+## Formatting (Prettier)
+
+Semicolons, double quotes, 2-space indent, trailing commas (ES5). Config at `packages/config/prettier.config.json`.
+
+## Error Handling
+
+- In route handlers: validate with Zod, return `c.json({ error }, status)`. Don't throw.
+- In services: throw on unexpected errors, catch known DB errors (e.g. `code === "23505"` for uniqueness).
+- Graceful degradation: use try/catch with empty fallback when non-critical data is unavailable.

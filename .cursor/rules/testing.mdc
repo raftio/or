@@ -1,0 +1,59 @@
+---
+description: Vitest testing patterns - mocking, structure, conventions
+globs: "**/*.test.ts"
+alwaysApply: false
+---
+
+# Testing Patterns
+
+## Framework
+
+Vitest with `vi.mock` and `vi.spyOn`. Configs at `apps/api/vitest.config.ts` and `packages/agent/vitest.config.ts`.
+
+## DB Mocking
+
+Mock the shared `query` function before importing modules that use it:
+
+```typescript
+vi.mock("../db/index.js", () => ({
+  query: vi.fn(),
+}));
+
+import { query } from "../db/index.js";
+import * as myService from "./my-service.js";
+
+const mockQuery = query as ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  mockQuery.mockReset();
+});
+```
+
+## Fetch Mocking
+
+For adapter tests, spy on `globalThis.fetch`:
+
+```typescript
+function mockFetch(handler: (url: string, init?: RequestInit) => Response | Promise<Response>) {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(
+    (input, init) => Promise.resolve(handler(String(input), init)),
+  );
+}
+```
+
+## Test Structure
+
+- `describe` per function or feature
+- `it` with descriptive names: success case, error case, edge case
+- Always test error paths: `mockRejectedValueOnce` for DB/network errors, verify graceful degradation
+- Use `expect.stringContaining()` for SQL assertions rather than exact match
+
+## Assertions
+
+```typescript
+expect(mockQuery).toHaveBeenCalledWith(
+  expect.stringContaining("INSERT INTO"),
+  ["param1", "param2"],
+);
+expect(result).toEqual(expectedRow);
+```

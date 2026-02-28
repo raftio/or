@@ -1,0 +1,55 @@
+---
+description: AI chat agent patterns - Vercel AI SDK, providers, streaming
+globs: "packages/agent/**/*.ts"
+alwaysApply: false
+---
+
+# Agent Patterns
+
+## Architecture
+
+The agent package is provider-agnostic. Core interface in `contract.ts`:
+
+```typescript
+export interface ChatAgent {
+  chat(input: ChatInput): Promise<ChatStreamResult>;
+}
+```
+
+`ChatStreamResult` is `Awaited<ReturnType<typeof streamText>>` from the Vercel AI SDK.
+
+## Provider Factory
+
+`createChatAgent(config)` in `providers/index.ts` selects the implementation:
+
+- **OpenAI/Anthropic**: dynamic import (`await import("@ai-sdk/openai")`), falls back to stub if no API key
+- **Stub**: returns canned response when no provider is configured
+
+When a workspace integration supplies a pre-built `model` object, it's passed directly to `createModelChatAgent`.
+
+## Streaming
+
+Shared logic in `providers/base.ts` uses `streamText()`:
+
+```typescript
+return streamText({
+  model,
+  system: buildSystemPrompt(input.systemContext, input.memoriesContext),
+  messages: input.messages.map((m) => ({
+    role: m.role as "user" | "assistant" | "system",
+    content: m.content,
+  })),
+  tools: input.tools,
+  stopWhen: stepCountIs(maxSteps),
+});
+```
+
+The API returns the stream via `result.toUIMessageStreamResponse()`.
+
+## Tools
+
+Tool definitions live in `apps/api/src/tools/`, not in this package. They follow the `ToolFactory = (ctx: ToolContext) => ToolSet` pattern and are injected into the agent at chat time.
+
+## System Prompt
+
+Built by `buildSystemPrompt()` in `prompt.ts`, combining workspace context and memory context into the system message.

@@ -1,0 +1,48 @@
+---
+description: Next.js web app patterns - App Router, auth, components, Tailwind
+globs: "apps/web/**/*.tsx
+alwaysApply: false
+---
+# Web App Patterns
+
+## App Router Structure
+
+Route groups separate auth and main app flows:
+
+- `(auth)/` — login, register (no main layout chrome)
+- `(main)/` — authenticated app with Navbar + Sidebar
+
+## Provider Hierarchy
+
+Root layout wraps `ThemeProvider` → `AuthProvider`. Main layout adds `WorkspaceProvider`:
+
+```
+ThemeProvider → AuthProvider → WorkspaceProvider → Navbar + Sidebar + children
+```
+
+## Authentication
+
+- JWT stored in `localStorage` as `orca_token`, user info as `orca_user` / `orca_user_name`
+- `useAuth()` hook from `AuthProvider` exposes `hydrated`, `isLoggedIn`, `token`, `email`
+- Main layout guards routes: redirects to `/login` when `hydrated && !isLoggedIn`
+
+## Component Organization
+
+- Shared components in `src/components/` (navbar, sidebar, providers, user-menu, theme-toggle)
+- Route-scoped components in `_components/` directories under their route (e.g. `integration/_components/`)
+
+## Tailwind & Theming
+
+Use semantic token classes instead of raw colors:
+
+```
+bg-base, bg-surface, bg-primary, bg-primary/10
+text-base-text, text-base-text-muted
+border-base-border
+```
+
+Theme variables (light/dark + accent) are defined as CSS custom properties in `globals.css` and mapped in `tailwind.config.js`.
+
+## Chat Integration
+
+Uses Vercel AI SDK's `useChat` hook with `DefaultChatTransport` — not `@orca/sdk`. The transport configures the API endpoint and auth headers.

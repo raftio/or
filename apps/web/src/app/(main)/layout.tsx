@@ -36,10 +36,12 @@ export default function MainLayout({
 
   return (
     <WorkspaceProvider>
-      <Navbar />
-      <div className="flex min-h-[calc(100vh-3.5rem)]">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+      <div className="flex h-screen flex-col overflow-hidden">
+        <Navbar />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
       </div>
     </WorkspaceProvider>
   );

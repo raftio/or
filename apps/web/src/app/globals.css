@@ -30,6 +30,20 @@
   --color-border: #1E293B;
 }
 
+[data-accent="pink"] {
+  --color-primary: #EC4899;
+  --color-primary-hover: #DB2777;
+  --color-secondary: #F472B6;
+  --color-glow: #F9A8D4;
+}
+
+[data-accent="pink"].dark {
+  --color-primary: #F472B6;
+  --color-primary-hover: #EC4899;
+  --color-secondary: #F9A8D4;
+  --color-glow: #FBCFE8;
+}
+
 @layer base {
   html {
     @apply min-h-full;

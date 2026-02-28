@@ -32,7 +32,7 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.9(hono@4.12.3)
-      '@orqestra/domain':
+      '@orca/domain':
         specifier: workspace:*
         version: link:../../packages/domain
       ai:
@@ -78,10 +78,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@orqestra/sdk':
+      '@orca/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@orqestra/ui':
+      '@orca/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       next:
@@ -118,10 +118,10 @@ importers:
 
   apps/worker:
     dependencies:
-      '@orqestra/domain':
+      '@orca/domain':
         specifier: workspace:*
         version: link:../../packages/domain
-      '@orqestra/sdk':
+      '@orca/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
     devDependencies:
@@ -159,7 +159,7 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@orqestra/domain':
+      '@orca/domain':
         specifier: workspace:*
         version: link:../domain
     devDependencies:

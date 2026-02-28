@@ -73,7 +73,7 @@ export default function IntegrationPage() {
         Integrations
       </h1>
       <p className="mt-3 text-base-text-muted">
-        Connect Orqestra with your existing tools — CI/CD pipelines, IDEs, Git
+        Connect Orca with your existing tools — CI/CD pipelines, IDEs, Git
         providers, and more.
       </p>
 

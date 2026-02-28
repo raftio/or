@@ -12,7 +12,7 @@ export function Navbar() {
           href="/"
           className="text-lg font-semibold tracking-tight text-base-text no-underline hover:no-underline"
         >
-          Orqestra
+          Orca
         </Link>
 
         <div className="flex items-center gap-3">

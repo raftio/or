@@ -40,7 +40,7 @@ async function start() {
     process.exit(1);
   }
   serve({ fetch: app.fetch, port }, (info) => {
-    console.log(`Orqestra listening on http://localhost:${info.port}`);
+    console.log(`Orca listening on http://localhost:${info.port}`);
   });
 }
 

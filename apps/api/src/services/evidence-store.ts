@@ -2,7 +2,7 @@
  * RFC-017: Evidence Sync Engine – store, dedup, link to ticket/PR
  */
 import { query } from "../db/index.js";
-import type { EvidencePayload } from "@orqestra/domain";
+import type { EvidencePayload } from "@orca/domain";
 
 export interface StoredEvidence extends EvidencePayload {
   id: string;

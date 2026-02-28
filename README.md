@@ -1,6 +1,6 @@
-# Orqestra
+# Orca
 
-Control Plane for the product flow: Intent → Execution → Evidence → Outcome → Feedback. Orchestrates tickets, specs, execution bundles, and evidence validation (see [docs/orqestra.md](docs/orqestra.md)).
+Control Plane for the product flow: Intent → Execution → Evidence → Outcome → Feedback. Orchestrates tickets, specs, execution bundles, and evidence validation (see [docs/orca.md](docs/orca.md)).
 
 ## Prerequisites
 

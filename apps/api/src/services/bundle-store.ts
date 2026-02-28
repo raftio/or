@@ -1,5 +1,5 @@
 import { query } from "../db/index.js";
-import type { ExecutionBundle } from "@orqestra/domain";
+import type { ExecutionBundle } from "@orca/domain";
 
 export interface CreateBundleInput {
   workspace_id: string;

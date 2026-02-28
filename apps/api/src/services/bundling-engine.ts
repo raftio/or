@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import * as bundleStore from "./bundle-store.js";
 import { synthesizeContext } from "./context-synthesis.js";
 import { createBundleDecomposerForWorkspace, createBundleDecomposer } from "../adapters/ai-decomposer/index.js";
-import type { ExecutionBundle } from "@orqestra/domain";
+import type { ExecutionBundle } from "@orca/domain";
 
 export interface BundlingEngineInput {
   workspace_id: string;

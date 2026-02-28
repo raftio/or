@@ -37,17 +37,17 @@ export default function LoginPage() {
       }
       if (data.token) {
         if (typeof window !== "undefined") {
-          localStorage.setItem("orqestra_token", data.token);
+          localStorage.setItem("orca_token", data.token);
         }
       }
       if (data.user?.email) {
         if (typeof window !== "undefined") {
-          localStorage.setItem("orqestra_user", data.user.email);
+          localStorage.setItem("orca_user", data.user.email);
         }
       }
       if (data.user?.name) {
         if (typeof window !== "undefined") {
-          localStorage.setItem("orqestra_user_name", data.user.name);
+          localStorage.setItem("orca_user_name", data.user.name);
         }
       }
       window.location.href = "/";
@@ -78,7 +78,7 @@ export default function LoginPage() {
             href="/"
             className="text-3xl font-bold tracking-tight text-base-text no-underline hover:text-primary"
           >
-            Orqestra
+            Orca
           </Link>
           <p className="mt-1 text-sm text-base-text-muted">
             Control Plane

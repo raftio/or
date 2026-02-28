@@ -4,13 +4,13 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/components/auth-provider";
 
 export const metadata: Metadata = {
-  title: "Orqestra",
-  description: "Orqestra Control Plane",
+  title: "Orca",
+  description: "Orca Control Plane",
 };
 
 const themeScript = `
 (function() {
-  var s = localStorage.getItem('orqestra_theme');
+  var s = localStorage.getItem('orca_theme');
   var dark = false;
   if (s === 'light' || s === 'dark') {
     dark = s === 'dark';

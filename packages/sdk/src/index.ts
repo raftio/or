@@ -1,9 +1,9 @@
 /**
- * Typed API client for Orqestra.
+ * Typed API client for Orca.
  */
-import type { EvidencePayload, ExecutionBundle } from "@orqestra/domain";
+import type { EvidencePayload, ExecutionBundle } from "@orca/domain";
 
-export interface OrqestraClientOptions {
+export interface OrcaClientOptions {
   baseUrl: string;
   apiToken?: string;
 }
@@ -14,7 +14,7 @@ export interface SyncBundlesResult {
   errors: string[];
 }
 
-export function createClient(options: OrqestraClientOptions) {
+export function createClient(options: OrcaClientOptions) {
   const { baseUrl, apiToken } = options;
 
   function headers(extra?: Record<string, string>): Record<string, string> {
@@ -57,4 +57,4 @@ export function createClient(options: OrqestraClientOptions) {
   };
 }
 
-export type OrqestraClient = ReturnType<typeof createClient>;
+export type OrcaClient = ReturnType<typeof createClient>;

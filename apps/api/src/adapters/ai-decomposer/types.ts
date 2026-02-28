@@ -1,4 +1,4 @@
-import type { SynthesizedContextAc, SynthesizedContextSection } from "@orqestra/domain";
+import type { SynthesizedContextAc, SynthesizedContextSection } from "@orca/domain";
 
 export interface DecomposeInput {
   ticket_title: string;

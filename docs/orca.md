@@ -85,13 +85,13 @@ They do not optimize workflow throughput.
 
 And workflow throughput — not code velocity — determines how many real outcomes a team can produce.
 
-## What is the Orqestra offer ?
+## What is the Orca offer ?
 
-Orqestra provides an AI-powered control plane for product-driven engineering teams.
+Orca provides an AI-powered control plane for product-driven engineering teams.
 
 It does not replace development tools, project management systems, or code editors. Instead, it orchestrates them.
 
-Orqestra connects product intent to execution and validation by introducing a structured workflow layer that:
+Orca connects product intent to execution and validation by introducing a structured workflow layer that:
 
 - Converts specifications into structured, machine-readable execution bundles
 - Synchronizes context across Jira, Confluence, Git, CI/CD, and IDE environments
@@ -99,7 +99,7 @@ Orqestra connects product intent to execution and validation by introducing a st
 - Validates implementation evidence before human review
 - Reduces cross-role handoff latency across PM, Engineering, QA, and Review
 
-Where existing AI tools optimize code generation, Orqestra optimizes workflow throughput.
+Where existing AI tools optimize code generation, Orca optimizes workflow throughput.
 
 It ensures that:
 
@@ -107,13 +107,13 @@ It ensures that:
 - More pull requests translate into measurable product outcomes
 - Product intent remains traceable through implementation and release
 
-Orqestra turns fragmented AI-assisted development into coordinated, outcome-driven execution.
+Orca turns fragmented AI-assisted development into coordinated, outcome-driven execution.
 
 # **The Idea**
 
-Orqestra acts as a cloud-native control plane that continuously enriches product intent with execution context and measurable outcome signals.
+Orca acts as a cloud-native control plane that continuously enriches product intent with execution context and measurable outcome signals.
 
-Instead of allowing specifications, tickets, code, and metrics to exist as disconnected artifacts, Orqestra creates a structured, traceable loop between:
+Instead of allowing specifications, tickets, code, and metrics to exist as disconnected artifacts, Orca creates a structured, traceable loop between:
 
 ```
 Intent → Execution → Evidence → Outcome → Feedback
@@ -165,7 +165,7 @@ Responsibilities:
 - Evidence generation
 - PR submission
 
-Orqestra does not replace the execution plane.
+Orca does not replace the execution plane.
 
 It coordinates and validates it.
 

@@ -2,7 +2,7 @@
  * Deterministic rule-based decomposer (original bundling-engine logic).
  * Used as fallback when AI is disabled or unavailable.
  */
-import type { DecompositionResult } from "@orqestra/domain";
+import type { DecompositionResult } from "@orca/domain";
 import type { BundleDecomposer } from "./contract.js";
 import type { DecomposeInput } from "./types.js";
 

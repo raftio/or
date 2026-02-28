@@ -9,11 +9,11 @@ app.get("/health", (c) => {
 });
 
 app.get("/version", (c) => {
-  return c.json({ name: "orqestra", version: SERVICE_VERSION });
+  return c.json({ name: "orca", version: SERVICE_VERSION });
 });
 
 app.get("/", (c) => {
-  return c.json({ name: "orqestra", version: SERVICE_VERSION });
+  return c.json({ name: "orca", version: SERVICE_VERSION });
 });
 
 export default app;

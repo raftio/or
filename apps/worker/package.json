@@ -1,5 +1,5 @@
 {
-  "name": "@orqestra/worker",
+  "name": "@orca/worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,8 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@orqestra/domain": "workspace:*",
-    "@orqestra/sdk": "workspace:*"
+    "@orca/domain": "workspace:*",
+    "@orca/sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

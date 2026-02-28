@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
       <h1 className="text-4xl font-bold tracking-tight text-base-text">
-        Orqestra
+        Orca
       </h1>
       <p className="mt-3 text-lg text-base-text-muted">
         Control Plane — intent to execution to evidence to outcome.

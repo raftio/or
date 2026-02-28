@@ -4,8 +4,8 @@
  */
 import { generateObject } from "ai";
 import type { LanguageModel } from "ai";
-import { DecompositionResultSchema } from "@orqestra/domain";
-import type { DecompositionResult } from "@orqestra/domain";
+import { DecompositionResultSchema } from "@orca/domain";
+import type { DecompositionResult } from "@orca/domain";
 import type { BundleDecomposer } from "./contract.js";
 import type { DecomposeInput } from "./types.js";
 import { createRuleBasedDecomposer } from "./rule-based.js";

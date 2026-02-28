@@ -36,7 +36,7 @@ const WorkspaceContext = createContext<WorkspaceContextValue>({
   refreshWorkspaces: async () => {},
 });
 
-const STORAGE_KEY = "orqestra_active_workspace";
+const STORAGE_KEY = "orca_active_workspace";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {

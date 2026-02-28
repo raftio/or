@@ -35,6 +35,21 @@ interface Bundle {
   updated_at: string;
 }
 
+interface Evidence {
+  id: string;
+  repo: string;
+  branch?: string;
+  commit_sha?: string;
+  pr_id?: string;
+  ticket_id: string;
+  test_results: { pass: number; fail: number; skip?: number };
+  coverage?: { line_pct?: number; branch_pct?: number };
+  ci_status: "success" | "failure" | "cancelled";
+  lifecycle: "created" | "validated" | "linked";
+  timestamp: string;
+  created_at: string;
+}
+
 function relativeTime(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60_000);
@@ -60,6 +75,7 @@ export default function BundleDetailPage() {
 
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [history, setHistory] = useState<Bundle[]>([]);
+  const [evidence, setEvidence] = useState<Evidence[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -74,13 +90,23 @@ export default function BundleDetailPage() {
         const data: Bundle = await res.json();
         setBundle(data);
 
-        const histRes = await fetch(
-          `${apiUrl}/v1/workspaces/${activeWorkspace.id}/bundles/${encodeURIComponent(data.ticket_ref)}/history`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
+        const [histRes, evRes] = await Promise.all([
+          fetch(
+            `${apiUrl}/v1/workspaces/${activeWorkspace.id}/bundles/${encodeURIComponent(data.ticket_ref)}/history`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+          fetch(
+            `${apiUrl}/v1/workspaces/${activeWorkspace.id}/evidence?ticketId=${encodeURIComponent(data.ticket_ref)}`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+        ]);
         if (histRes.ok) {
           const histData = await histRes.json();
           setHistory(histData.bundles ?? []);
+        }
+        if (evRes.ok) {
+          const evData = await evRes.json();
+          setEvidence(evData.evidence ?? []);
         }
       } else if (res.status === 404) {
         setError("Bundle not found.");
@@ -283,6 +309,99 @@ export default function BundleDetailPage() {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* Evidence */}
+      {evidence.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold text-base-text">
+            Evidence ({evidence.length})
+          </h2>
+          <div className="mt-3 space-y-3">
+            {evidence.map((ev) => (
+              <div
+                key={ev.id}
+                className="rounded-xl border border-base-border bg-surface p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    {/* Source info */}
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-base-text">
+                      <code className="font-mono text-xs">{ev.repo}</code>
+                      {ev.branch && (
+                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-mono text-primary">
+                          {ev.branch}
+                        </span>
+                      )}
+                      {ev.commit_sha && (
+                        <code className="font-mono text-[10px] text-base-text-muted">
+                          {ev.commit_sha.slice(0, 7)}
+                        </code>
+                      )}
+                      {ev.pr_id && (
+                        <span className="text-xs text-base-text-muted">
+                          PR #{ev.pr_id}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Test results */}
+                    <div className="flex flex-wrap items-center gap-3 text-xs">
+                      <span className="text-green-500 font-medium">
+                        {ev.test_results.pass} passed
+                      </span>
+                      <span className="text-red-400 font-medium">
+                        {ev.test_results.fail} failed
+                      </span>
+                      {ev.test_results.skip != null && ev.test_results.skip > 0 && (
+                        <span className="text-base-text-muted">
+                          {ev.test_results.skip} skipped
+                        </span>
+                      )}
+                      {ev.coverage && (
+                        <>
+                          {ev.coverage.line_pct != null && (
+                            <span className="text-base-text-muted">
+                              {ev.coverage.line_pct}% line cov
+                            </span>
+                          )}
+                          {ev.coverage.branch_pct != null && (
+                            <span className="text-base-text-muted">
+                              {ev.coverage.branch_pct}% branch cov
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Timestamp */}
+                    <p className="text-[10px] text-base-text-muted opacity-60">
+                      {relativeTime(ev.created_at)}
+                    </p>
+                  </div>
+
+                  {/* Status badges */}
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        ev.ci_status === "success"
+                          ? "bg-green-500/10 text-green-500"
+                          : ev.ci_status === "failure"
+                            ? "bg-red-400/10 text-red-400"
+                            : "bg-amber-400/10 text-amber-400"
+                      }`}
+                    >
+                      {ev.ci_status}
+                    </span>
+                    <span className="rounded-full bg-base-border/40 px-2 py-0.5 text-[10px] text-base-text-muted">
+                      {ev.lifecycle}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 

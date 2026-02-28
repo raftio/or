@@ -141,6 +141,42 @@ export async function ensureApiTokenTables(): Promise<void> {
   `);
 }
 
+export async function ensureEvidenceTables(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS workspace_evidence (
+      id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id        UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      repo                TEXT NOT NULL,
+      branch              TEXT,
+      commit_sha          TEXT,
+      pr_id               TEXT,
+      ticket_id           TEXT NOT NULL,
+      test_results        JSONB NOT NULL,
+      coverage            JSONB,
+      ci_logs             TEXT,
+      validation_signals  JSONB,
+      ci_status           TEXT NOT NULL CHECK (ci_status IN ('success', 'failure', 'cancelled')),
+      artifact_urls       JSONB,
+      timestamp           TIMESTAMPTZ NOT NULL,
+      lifecycle           TEXT NOT NULL DEFAULT 'created' CHECK (lifecycle IN ('created', 'validated', 'linked')),
+      bundle_id           UUID,
+      bundle_version      INTEGER,
+      created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_evidence_workspace_ticket
+      ON workspace_evidence(workspace_id, ticket_id);
+    CREATE INDEX IF NOT EXISTS idx_evidence_repo_pr
+      ON workspace_evidence(workspace_id, repo, pr_id);
+    CREATE INDEX IF NOT EXISTS idx_evidence_repo_commit
+      ON workspace_evidence(workspace_id, repo, commit_sha);
+    CREATE INDEX IF NOT EXISTS idx_evidence_bundle
+      ON workspace_evidence(workspace_id, bundle_id);
+    CREATE INDEX IF NOT EXISTS idx_evidence_created
+      ON workspace_evidence(workspace_id, created_at DESC);
+  `);
+}
+
 export async function closePool(): Promise<void> {
   if (pool) {
     await pool.end();

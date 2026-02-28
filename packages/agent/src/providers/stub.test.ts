@@ -51,7 +51,7 @@ describe("createStubChatAgent", () => {
     expect(text).toContain("stub mode");
   });
 
-  it("produces a streamable response", async () => {
+  it("produces a text stream response", async () => {
     const agent = createStubChatAgent();
     const result = await agent.chat({
       messages: [{ role: "user", content: "hello" }],
@@ -60,5 +60,31 @@ describe("createStubChatAgent", () => {
     const response = result.toTextStreamResponse();
     expect(response).toBeInstanceOf(Response);
     expect(response.headers.get("Content-Type")).toContain("text/plain");
+  });
+
+  it("produces a UI message stream response", async () => {
+    const agent = createStubChatAgent();
+    const result = await agent.chat({
+      messages: [{ role: "user", content: "hello" }],
+    });
+
+    const response = result.toUIMessageStreamResponse();
+    expect(response).toBeInstanceOf(Response);
+
+    const body = await response.text();
+    expect(body).toContain("0:");
+    expect(body).toContain('d:{"finishReason":"stop"}');
+  });
+
+  it("ignores tools and maxSteps gracefully", async () => {
+    const agent = createStubChatAgent();
+    const result = await agent.chat({
+      messages: [{ role: "user", content: "test" }],
+      tools: {},
+      maxSteps: 5,
+    });
+
+    const text = await result.text;
+    expect(text).toContain("stub mode");
   });
 });

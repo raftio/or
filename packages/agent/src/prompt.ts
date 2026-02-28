@@ -14,14 +14,28 @@ Guidelines:
 - If you don't have enough context, say so and suggest what the user can look up.
 - Never fabricate bundle IDs, evidence data, or ticket references.`;
 
-export function buildSystemPrompt(workspaceContext?: string): string {
-  if (!workspaceContext?.trim()) {
-    return BASE_PERSONA;
+const TOOL_GUIDELINES = `
+
+## Tool Usage
+- Use tools to take actions on behalf of the user. Always confirm destructive actions before executing.
+- When the user shares decisions, preferences, or important context, proactively save them with saveMemory.
+- When the user references past decisions or asks "what did we decide", use recallMemories to check.
+- When creating bundles, decompose the user's idea into clear tasks with titles and descriptions.
+- Present tool results in a user-friendly format — don't dump raw JSON.`;
+
+export function buildSystemPrompt(
+  workspaceContext?: string,
+  memoriesContext?: string,
+): string {
+  let prompt = BASE_PERSONA + TOOL_GUIDELINES;
+
+  if (memoriesContext?.trim()) {
+    prompt += `\n\n## Your Memory\n\nThese are notes and decisions saved from previous conversations with this user:\n\n${memoriesContext}`;
   }
 
-  return `${BASE_PERSONA}
+  if (workspaceContext?.trim()) {
+    prompt += `\n\n## Current Workspace Context\n\n${workspaceContext}`;
+  }
 
-## Current Workspace Context
-
-${workspaceContext}`;
+  return prompt;
 }

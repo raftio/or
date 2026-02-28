@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { TextStreamChatTransport } from "ai";
+import { DefaultChatTransport } from "ai";
 import { useAuth } from "../../../components/auth-provider";
 import { useWorkspace } from "../../../components/workspace-provider";
 
@@ -27,6 +27,8 @@ const suggestions = [
   { label: "Show me recent tasks", icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" },
   { label: "Help me create a bundle", icon: "M12 5v14M5 12h14" },
 ];
+
+// ── Markdown renderer ─────────────────────────────────────────────────────
 
 function SimpleMarkdown({ content }: { content: string }) {
   const lines = content.split("\n");
@@ -103,6 +105,147 @@ function renderInline(text: string): React.ReactNode[] {
   return parts;
 }
 
+// ── Tool result rendering ─────────────────────────────────────────────────
+
+const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
+  listBundles:      { label: "Bundles",        icon: "M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" },
+  getBundle:        { label: "Bundle Details",  icon: "M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" },
+  createBundle:     { label: "Bundle Created",  icon: "M12 5v14M5 12h14" },
+  listEvidence:     { label: "Evidence",        icon: "M9 11l3 3L22 4" },
+  getEvidenceStatus:{ label: "Evidence Status", icon: "M9 11l3 3L22 4" },
+  saveMemory:       { label: "Noted",           icon: "M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" },
+  recallMemories:   { label: "Memories",        icon: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" },
+};
+
+interface ToolInvocation {
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  state: "call" | "partial-call" | "result";
+  result?: unknown;
+}
+
+function ToolResultCard({ invocation }: { invocation: ToolInvocation }) {
+  const meta = TOOL_LABELS[invocation.toolName] ?? { label: invocation.toolName, icon: "" };
+
+  if (invocation.state === "call" || invocation.state === "partial-call") {
+    return (
+      <div className="my-1.5 flex items-center gap-2 rounded-lg border border-base-border bg-base/50 px-3 py-2 text-xs text-base-text-muted">
+        <div className="h-3 w-3 animate-spin rounded-full border border-base-border border-t-primary" />
+        <span>Using {meta.label}...</span>
+      </div>
+    );
+  }
+
+  const result = invocation.result as Record<string, unknown> | undefined;
+  if (!result) return null;
+
+  if (invocation.toolName === "saveMemory") {
+    return (
+      <div className="my-1.5 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d={meta.icon} />
+        </svg>
+        Saved to memory
+      </div>
+    );
+  }
+
+  if (invocation.toolName === "createBundle") {
+    const tasks = (result.tasks ?? []) as { id: string; title: string }[];
+    return (
+      <div className="my-1.5 rounded-lg border border-green-500/20 bg-green-500/5 p-3 text-xs">
+        <div className="mb-1.5 flex items-center gap-1.5 font-medium text-green-600">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          Bundle created — {result.ticketRef as string}
+        </div>
+        {tasks.length > 0 && (
+          <ul className="mt-1 space-y-0.5 text-base-text-muted">
+            {tasks.map((t) => (
+              <li key={t.id}>
+                <span className="font-mono text-primary/70">{t.id}</span> {t.title}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
+  if (invocation.toolName === "recallMemories") {
+    if (!(result.found as boolean)) {
+      return (
+        <div className="my-1.5 rounded-lg border border-base-border bg-base/50 px-3 py-2 text-xs text-base-text-muted italic">
+          No matching memories found.
+        </div>
+      );
+    }
+    const memories = (result.memories ?? []) as { id: string; category: string; content: string; createdAt: string }[];
+    return (
+      <div className="my-1.5 space-y-1.5">
+        {memories.map((m) => (
+          <div key={m.id} className="rounded-lg border border-base-border bg-base/50 px-3 py-2 text-xs">
+            <span className="mr-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase text-primary">
+              {m.category}
+            </span>
+            <span className="text-base-text">{m.content}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Generic fallback for listBundles, listEvidence, etc.
+  return (
+    <details className="my-1.5 rounded-lg border border-base-border bg-base/50 text-xs">
+      <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-2 font-medium text-base-text-muted hover:text-base-text">
+        {meta.icon && (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d={meta.icon} />
+          </svg>
+        )}
+        {meta.label}
+        {"total" in result && <span className="ml-auto text-base-text-muted">({result.total as number})</span>}
+      </summary>
+      <pre className="overflow-x-auto border-t border-base-border px-3 py-2 text-[11px] leading-relaxed text-base-text-muted">
+        {JSON.stringify(result, null, 2)}
+      </pre>
+    </details>
+  );
+}
+
+// ── Message part renderer ─────────────────────────────────────────────────
+
+interface MessagePart {
+  type: string;
+  text?: string;
+  toolInvocation?: ToolInvocation;
+}
+
+function MessageParts({ parts, isUser }: { parts: MessagePart[]; isUser: boolean }) {
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.type === "text" && part.text) {
+          return isUser ? (
+            <div key={i} className="whitespace-pre-wrap">{part.text}</div>
+          ) : (
+            <SimpleMarkdown key={i} content={part.text} />
+          );
+        }
+        if (part.type === "tool-invocation" && part.toolInvocation) {
+          return <ToolResultCard key={i} invocation={part.toolInvocation} />;
+        }
+        return null;
+      })}
+    </>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────
+
 export default function ChatPage() {
   const { token } = useAuth();
   const { activeWorkspace } = useWorkspace();
@@ -135,7 +278,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
 
   const transport = useMemo(
     () =>
-      new TextStreamChatTransport({
+      new DefaultChatTransport({
         api: `${apiUrl}/v1/workspaces/${workspaceId}/chat`,
         headers: () => tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : ({} as Record<string, string>),
         prepareSendMessagesRequest({ messages, body, headers, api, credentials }) {
@@ -414,11 +557,10 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
                       : "border border-base-border bg-surface text-base-text"
                   }`}
                 >
-                  {msg.role === "user" ? (
-                    <div className="whitespace-pre-wrap">{getTextFromParts(msg.parts as { type: string; text?: string }[])}</div>
-                  ) : (
-                    <SimpleMarkdown content={getTextFromParts(msg.parts as { type: string; text?: string }[])} />
-                  )}
+                  <MessageParts
+                    parts={msg.parts as MessagePart[]}
+                    isUser={msg.role === "user"}
+                  />
                 </div>
               </div>
             ))}

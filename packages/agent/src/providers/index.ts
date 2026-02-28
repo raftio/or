@@ -1,8 +1,7 @@
 import type { ChatAgent } from "../contract.js";
 import type { ChatAgentConfig } from "../types.js";
 import { createStubChatAgent } from "./stub.js";
-import { createOpenAiChatAgent } from "./openai.js";
-import { createAnthropicChatAgent } from "./anthropic.js";
+import { createModelChatAgent } from "./base.js";
 
 /**
  * Create a chat agent from config. When a pre-built LanguageModel is supplied
@@ -11,14 +10,10 @@ import { createAnthropicChatAgent } from "./anthropic.js";
  */
 export async function createChatAgent(config: ChatAgentConfig): Promise<ChatAgent> {
   if (config.model) {
-    switch (config.provider) {
-      case "openai":
-        return createOpenAiChatAgent(config.model);
-      case "anthropic":
-        return createAnthropicChatAgent(config.model);
-      default:
-        return createStubChatAgent();
+    if (config.provider === "openai" || config.provider === "anthropic") {
+      return createModelChatAgent(config.model);
     }
+    return createStubChatAgent();
   }
 
   if (config.provider === "openai") {
@@ -28,7 +23,7 @@ export async function createChatAgent(config: ChatAgentConfig): Promise<ChatAgen
     }
     const { createOpenAI } = await import("@ai-sdk/openai");
     const provider = createOpenAI({ apiKey: config.apiKey });
-    return createOpenAiChatAgent(provider(config.modelName || "gpt-4o-mini"));
+    return createModelChatAgent(provider(config.modelName || "gpt-4o-mini"));
   }
 
   if (config.provider === "anthropic") {
@@ -38,7 +33,7 @@ export async function createChatAgent(config: ChatAgentConfig): Promise<ChatAgen
     }
     const { createAnthropic } = await import("@ai-sdk/anthropic");
     const provider = createAnthropic({ apiKey: config.apiKey });
-    return createAnthropicChatAgent(provider(config.modelName || "claude-sonnet-4-20250514"));
+    return createModelChatAgent(provider(config.modelName || "claude-sonnet-4-20250514"));
   }
 
   return createStubChatAgent();

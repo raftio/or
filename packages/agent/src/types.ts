@@ -1,4 +1,4 @@
-import type { LanguageModel } from "ai";
+import type { LanguageModel, ToolSet } from "ai";
 
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -8,6 +8,9 @@ export interface ChatMessage {
 export interface ChatInput {
   messages: ChatMessage[];
   systemContext?: string;
+  memoriesContext?: string;
+  tools?: ToolSet;
+  maxSteps?: number;
 }
 
 export type ChatProviderType = "stub" | "openai" | "anthropic";

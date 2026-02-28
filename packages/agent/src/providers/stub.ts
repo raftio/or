@@ -17,34 +17,62 @@ function pickResponse(messages: ChatInput["messages"]): string {
   return STUB_RESPONSES.default;
 }
 
+function buildTextStream(text: string) {
+  const encoder = new TextEncoder();
+  return simulateReadableStream({
+    chunks: text.split(" ").map((word, i) => encoder.encode(i === 0 ? word : ` ${word}`)),
+    initialDelayInMs: 0,
+    chunkDelayInMs: 15,
+  });
+}
+
+function toAsyncTextIterator(stream: ReadableStream<Uint8Array>) {
+  return (async function* () {
+    const decoder = new TextDecoder();
+    const reader = stream.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        yield decoder.decode(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  })();
+}
+
 export function createStubChatAgent(): ChatAgent {
   return {
     async chat(input: ChatInput) {
       const text = pickResponse(input.messages);
-      const encoder = new TextEncoder();
-      const stream = simulateReadableStream({
-        chunks: text.split(" ").map((word, i) => encoder.encode(i === 0 ? word : ` ${word}`)),
-        initialDelayInMs: 0,
-        chunkDelayInMs: 15,
-      });
+      const textStreamRaw = buildTextStream(text);
+      const uiStreamRaw = buildTextStream(text);
 
       return {
-        textStream: (async function* () {
-          const decoder = new TextDecoder();
-          const reader = stream.getReader();
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              yield decoder.decode(value);
-            }
-          } finally {
-            reader.releaseLock();
-          }
-        })(),
+        textStream: toAsyncTextIterator(textStreamRaw),
         text: Promise.resolve(text),
         toTextStreamResponse() {
-          return new Response(stream, {
+          return new Response(textStreamRaw, {
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "Transfer-Encoding": "chunked",
+            },
+          });
+        },
+        toUIMessageStreamResponse() {
+          const encoder = new TextEncoder();
+          const transform = new TransformStream<Uint8Array, Uint8Array>({
+            transform(chunk, controller) {
+              const decoded = new TextDecoder().decode(chunk);
+              controller.enqueue(encoder.encode(`0:${JSON.stringify(decoded)}\n`));
+            },
+            flush(controller) {
+              controller.enqueue(encoder.encode(`d:{"finishReason":"stop"}\n`));
+            },
+          });
+          uiStreamRaw.pipeTo(transform.writable).catch(() => {});
+          return new Response(transform.readable, {
             headers: {
               "Content-Type": "text/plain; charset=utf-8",
               "Transfer-Encoding": "chunked",

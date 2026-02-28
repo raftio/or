@@ -6,6 +6,7 @@ import { authMiddleware } from "../../middleware/auth.js";
 import { requireWorkspaceMember } from "../../middleware/workspace-auth.js";
 import * as chatStore from "../../services/chat-store.js";
 import { buildChatContext } from "../../services/chat-context.js";
+import { toolRegistry, memoryProvider } from "../../tools/index.js";
 import {
   getAiChatProvider,
   getAiChatModel,
@@ -112,17 +113,30 @@ app.post("/workspaces/:workspaceId/chat", async (c) => {
 
   await chatStore.addMessage(conversationId, lastUserMsg.role, lastUserMsg.content);
 
-  const [agent, systemContext] = await Promise.all([
+  const tools = toolRegistry.build({ workspaceId, userId, conversationId });
+
+  const [agent, systemContext, recentMemories] = await Promise.all([
     resolveAgent(workspaceId),
     buildChatContext(workspaceId),
+    memoryProvider.getRecent(workspaceId, userId, 20),
   ]);
+
+  const memoriesContext = recentMemories.length > 0
+    ? recentMemories.map((m) => `[${m.category}] ${m.content}`).join("\n")
+    : undefined;
 
   const chatMessages: ChatMessage[] = messages.map((m) => ({
     role: m.role,
     content: m.content,
   }));
 
-  const result = await agent.chat({ messages: chatMessages, systemContext });
+  const result = await agent.chat({
+    messages: chatMessages,
+    systemContext,
+    memoriesContext,
+    tools,
+    maxSteps: 5,
+  });
 
   const convId = conversationId;
   Promise.resolve(result.text).then(async (fullText: string) => {
@@ -133,7 +147,7 @@ app.post("/workspaces/:workspaceId/chat", async (c) => {
     }
   }).catch(() => {});
 
-  const response = result.toTextStreamResponse();
+  const response = result.toUIMessageStreamResponse();
 
   const headers = new Headers(response.headers);
   headers.set("X-Conversation-Id", convId);

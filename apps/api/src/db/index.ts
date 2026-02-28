@@ -204,6 +204,22 @@ export async function ensureChatTables(): Promise<void> {
   `);
 }
 
+export async function ensureMemoryTables(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS workspace_chat_memories (
+      id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id            UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      user_id                 UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      category                TEXT NOT NULL CHECK (category IN ('decision','preference','context','summary')),
+      content                 TEXT NOT NULL,
+      source_conversation_id  UUID REFERENCES workspace_chat_conversations(id) ON DELETE SET NULL,
+      created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_chat_memories_ws_user
+      ON workspace_chat_memories(workspace_id, user_id, created_at DESC);
+  `);
+}
+
 export async function closePool(): Promise<void> {
   if (pool) {
     await pool.end();

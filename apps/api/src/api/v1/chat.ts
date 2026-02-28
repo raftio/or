@@ -125,7 +125,7 @@ app.post("/workspaces/:workspaceId/chat", async (c) => {
   const result = await agent.chat({ messages: chatMessages, systemContext });
 
   const convId = conversationId;
-  result.text.then(async (fullText: string) => {
+  Promise.resolve(result.text).then(async (fullText: string) => {
     try {
       await chatStore.addMessage(convId, "assistant", fullText);
     } catch (err) {

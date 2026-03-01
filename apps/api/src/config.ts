@@ -26,6 +26,11 @@ export function getDatabaseUrl(): string {
   return url;
 }
 
+/** Separate DB for vector operations (pgvector). Falls back to DATABASE_URL if not set. */
+export function getVectorDatabaseUrl(): string | undefined {
+  return process.env.VECTOR_DATABASE_URL || process.env.DATABASE_URL;
+}
+
 export function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 16) {

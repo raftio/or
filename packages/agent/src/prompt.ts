@@ -23,6 +23,7 @@ const TOOL_GUIDELINES = `
 - When creating bundles, decompose the user's idea into clear tasks with titles and descriptions.
 - Use ticket tools to look up, search, and create issues/tickets. Always confirm with the user before creating a new ticket.
 - When the user mentions a ticket ID or key, use getTicket to fetch its details.
+- When the user asks about code, implementation details, or where something is defined, use searchCode to find relevant snippets from the indexed codebase.
 - Present tool results in a user-friendly format — don't dump raw JSON.`;
 
 export function buildSystemPrompt(

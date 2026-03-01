@@ -210,6 +210,27 @@ export async function getBundleHistory(
   return result.rows.map(rowToBundle);
 }
 
+export async function getLatestBundlesByTickets(
+  workspaceId: string,
+  ticketRefs: string[],
+): Promise<Map<string, ExecutionBundle>> {
+  const map = new Map<string, ExecutionBundle>();
+  if (!ticketRefs.length) return map;
+  const result = await query<BundleRow>(
+    `SELECT DISTINCT ON (ticket_ref) *
+     FROM workspace_bundles
+     WHERE workspace_id = $1 AND ticket_ref = ANY($2)
+     ORDER BY ticket_ref, version DESC`,
+    [workspaceId, ticketRefs],
+  );
+  for (const row of result.rows) {
+    const bundle = rowToBundle(row);
+    cacheSet(bundle, workspaceId);
+    map.set(row.ticket_ref, bundle);
+  }
+  return map;
+}
+
 export async function listBundles(
   workspaceId: string,
   opts?: { limit?: number; offset?: number },

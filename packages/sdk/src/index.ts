@@ -11,7 +11,13 @@ export interface OrcaClientOptions {
 export interface SyncBundlesResult {
   total: number;
   synced: number;
+  skipped: number;
   errors: string[];
+}
+
+export interface SyncCodeIndexResult {
+  triggered: number;
+  message?: string;
 }
 
 export function createClient(options: OrcaClientOptions) {
@@ -48,6 +54,14 @@ export function createClient(options: OrcaClientOptions) {
     },
     async syncBundles(): Promise<SyncBundlesResult> {
       const res = await fetch(`${baseUrl}/v1/bundles/sync`, {
+        method: "POST",
+        headers: headers(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    async syncCodeIndex(): Promise<SyncCodeIndexResult> {
+      const res = await fetch(`${baseUrl}/v1/code-index/sync`, {
         method: "POST",
         headers: headers(),
       });

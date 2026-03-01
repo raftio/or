@@ -15,11 +15,11 @@ import { cors } from "hono/cors";
 import health from "./api/health.js";
 import v1 from "./api/v1/index.js";
 import auth from "./api/auth.js";
-import { ensureUsersTable, ensureWorkspaceTables, ensureIntegrationTables, ensureApiTokenTables, ensureBundleTables, ensureEvidenceTables, ensureChatTables, ensureMemoryTables } from "./db/index.js";
+import { ensureUsersTable, ensureWorkspaceTables, ensureIntegrationTables, ensureApiTokenTables, ensureBundleTables, ensureEvidenceTables, ensureChatTables, ensureMemoryTables, ensureEventTables, ensureVectorTables } from "./db/index.js";
 
 const app = new Hono();
 
-app.use("*", cors({ origin: "*", credentials: true }));
+app.use("*", cors({ origin: "*", credentials: true, exposeHeaders: ["X-Conversation-Id"] }));
 
 app.route("/", health);
 app.route("/auth", auth);
@@ -37,10 +37,22 @@ async function start() {
     await ensureEvidenceTables();
     await ensureChatTables();
     await ensureMemoryTables();
+    await ensureEventTables();
   } catch (e) {
     console.error("Failed to ensure database tables (is DATABASE_URL set?):", e);
     process.exit(1);
   }
+
+  // Vector tables require the pgvector extension — non-fatal if unavailable
+  try {
+    await ensureVectorTables();
+  } catch (e) {
+    console.warn(
+      "[vector] pgvector extension not available — code indexing features disabled.",
+      e instanceof Error ? e.message : e,
+    );
+  }
+
   serve({ fetch: app.fetch, port }, (info) => {
     console.log(`Orca listening on http://localhost:${info.port}`);
   });

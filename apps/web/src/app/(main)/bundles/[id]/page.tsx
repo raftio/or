@@ -134,7 +134,7 @@ export default function BundleDetailPage() {
       setStatusNotification(null);
       try {
         const res = await fetch(
-          `${apiUrl}/v1/workspaces/${activeWorkspace.id}/bundles/${bundle.id}/status`,
+          `${apiUrl}/v1/workspaces/${activeWorkspace.id}/bundles/by-ticket/${encodeURIComponent(bundle.ticket_ref)}/status`,
           {
             method: "PATCH",
             headers: {
@@ -145,11 +145,13 @@ export default function BundleDetailPage() {
           },
         );
         if (res.ok) {
-          const updated: Bundle = await res.json();
-          setBundle(updated);
+          const data: { bundles: Bundle[]; updated: number } = await res.json();
+          const current = data.bundles.find((b) => b.id === bundle.id) ?? data.bundles[0];
+          if (current) setBundle(current);
+          setHistory(data.bundles.sort((a, b) => b.version - a.version));
           setStatusNotification({
             type: "success",
-            message: `Bundle marked as ${newStatus}.`,
+            message: `All versions marked as ${newStatus} (${data.updated} updated).`,
           });
         } else {
           const errData = await res.json().catch(() => ({}));

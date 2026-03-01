@@ -1,6 +1,8 @@
 import { query } from "../db/index.js";
 import type { ExecutionBundle, BundleStatus } from "@orca/domain";
 
+type BundleStatus = "active" | "completed";
+
 export interface CreateBundleInput {
   workspace_id: string;
   ticket_ref: string;
@@ -240,26 +242,32 @@ export async function getLatestBundlesByTickets(
 
 export async function listBundles(
   workspaceId: string,
-  opts?: { limit?: number; offset?: number },
+  opts?: { limit?: number; offset?: number; status?: BundleStatus },
 ): Promise<{ bundles: ExecutionBundle[]; total: number }> {
   const limit = opts?.limit ?? 50;
   const offset = opts?.offset ?? 0;
+  const status = opts?.status;
+
+  const dataStatusFilter = status ? "AND status = $4" : "";
+  const countStatusFilter = status ? "AND status = $2" : "";
+  const params: unknown[] = [workspaceId, limit, offset];
+  if (status) params.push(status);
 
   const [dataResult, countResult] = await Promise.all([
     query<BundleRow>(
       `SELECT * FROM (
          SELECT DISTINCT ON (ticket_ref) *
          FROM workspace_bundles
-         WHERE workspace_id = $1
+         WHERE workspace_id = $1 ${dataStatusFilter}
          ORDER BY ticket_ref, version DESC
        ) latest
        ORDER BY latest.created_at DESC
        LIMIT $2 OFFSET $3`,
-      [workspaceId, limit, offset],
+      params,
     ),
     query<{ count: string }>(
-      `SELECT COUNT(DISTINCT ticket_ref) AS count FROM workspace_bundles WHERE workspace_id = $1`,
-      [workspaceId],
+      `SELECT COUNT(DISTINCT ticket_ref) AS count FROM workspace_bundles WHERE workspace_id = $1 ${countStatusFilter}`,
+      status ? [workspaceId, status] : [workspaceId],
     ),
   ]);
 
@@ -285,4 +293,25 @@ export async function updateBundleStatus(
   const bundle = rowToBundle(result.rows[0]);
   cacheSet(bundle, workspaceId);
   return bundle;
+}
+
+/** Update status for every version of a bundle identified by ticket_ref. */
+export async function updateAllBundleVersionsStatus(
+  workspaceId: string,
+  ticketRef: string,
+  status: BundleStatus,
+): Promise<ExecutionBundle[]> {
+  purgeCacheForTicket(workspaceId, ticketRef);
+
+  const result = await query<BundleRow>(
+    `UPDATE workspace_bundles
+     SET status = $1, updated_at = now()
+     WHERE workspace_id = $2 AND ticket_ref = $3
+     RETURNING *`,
+    [status, workspaceId, ticketRef],
+  );
+
+  const bundles = result.rows.map(rowToBundle);
+  for (const b of bundles) cacheSet(b, workspaceId);
+  return bundles;
 }

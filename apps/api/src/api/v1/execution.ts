@@ -22,6 +22,8 @@ app.use("*", authMiddleware as never);
 
 // ── Schemas ──────────────────────────────────────────────────────────────
 
+const BundleStatusSchema = z.enum(["active", "completed"]);
+
 const CreateBundleBodySchema = z.object({
   ticket_ref: z.string().min(1),
   title: z.string().optional(),
@@ -129,7 +131,9 @@ app.get("/workspaces/:workspaceId/bundles", async (c) => {
 
   const limit = Number(c.req.query("limit")) || 50;
   const offset = Number(c.req.query("offset")) || 0;
-  const result = await bundleStore.listBundles(workspaceId, { limit, offset });
+  const rawStatus = c.req.query("status");
+  const status = rawStatus ? BundleStatusSchema.parse(rawStatus) : undefined;
+  const result = await bundleStore.listBundles(workspaceId, { limit, offset, status });
   return c.json(result);
 });
 
@@ -149,6 +153,45 @@ app.get("/workspaces/:workspaceId/bundles/:ticketRef/history", async (c) => {
 
 const UpdateBundleStatusSchema = z.object({
   status: BundleStatusSchema,
+});
+
+app.patch("/workspaces/:workspaceId/bundles/by-ticket/:ticketRef/status", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("workspaceId");
+
+  const memberCheck = await requireWorkspaceMember(workspaceId, userId);
+  if (!memberCheck.ok) {
+    return c.json({ error: memberCheck.error }, memberCheck.status);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = UpdateBundleStatusSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      { error: "Validation failed", details: parsed.error.flatten() },
+      400,
+    );
+  }
+
+  const ticketRef = decodeURIComponent(c.req.param("ticketRef"));
+  const bundles = await bundleStore.updateAllBundleVersionsStatus(
+    workspaceId,
+    ticketRef,
+    parsed.data.status,
+  );
+  if (bundles.length === 0) {
+    return c.json({ error: "No bundles found for ticket" }, 404);
+  }
+
+  await createEvent(
+    workspaceId,
+    "bundle.updated",
+    `All versions of ${ticketRef} marked as ${parsed.data.status} (${bundles.length} updated)`,
+    { ticket_ref: ticketRef, status: parsed.data.status, updated: bundles.length },
+    userId,
+  );
+
+  return c.json({ bundles, updated: bundles.length });
 });
 
 app.patch("/workspaces/:workspaceId/bundles/:id/status", async (c) => {
@@ -250,7 +293,9 @@ app.get("/bundles", async (c) => {
 
   const limit = Number(c.req.query("limit")) || 50;
   const offset = Number(c.req.query("offset")) || 0;
-  const result = await bundleStore.listBundles(workspaceId, { limit, offset });
+  const rawStatus = c.req.query("status");
+  const status = rawStatus ? BundleStatusSchema.parse(rawStatus) : undefined;
+  const result = await bundleStore.listBundles(workspaceId, { limit, offset, status });
   return c.json(result);
 });
 

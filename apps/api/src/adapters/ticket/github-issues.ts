@@ -3,7 +3,7 @@
  * Auth: Bearer token (PAT or fine-grained token)
  */
 import type { TicketProvider } from "./contract.js";
-import type { AcceptanceCriterionDto, TicketDto } from "./types.js";
+import type { AcceptanceCriterionDto, CreateTicketInput, TicketDto } from "./types.js";
 
 interface GitHubIssue {
   id: number;
@@ -102,6 +102,31 @@ export function createGitHubIssuesProvider(
       } catch {
         return [];
       }
+    },
+
+    async createTicket(input: CreateTicketInput): Promise<TicketDto> {
+      const res = await fetch(
+        `${baseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues`,
+        {
+          method: "POST",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: input.title,
+            body: input.description ?? "",
+            labels: input.labels ?? [],
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(
+          `GitHub responded with ${res.status}: ${body.slice(0, 300)}`,
+        );
+      }
+
+      const issue = (await res.json()) as GitHubIssue;
+      return mapIssueToDto(issue, owner, repo);
     },
   };
 }

@@ -9,6 +9,7 @@ import integrations from "./integrations.js";
 import apiTokens from "./api-tokens.js";
 import chat from "./chat.js";
 import tickets from "./tickets.js";
+import codeIndex from "./code-index.js";
 
 const v1 = new Hono().basePath("/v1");
 
@@ -22,5 +23,6 @@ v1.route("/", integrations);
 v1.route("/", apiTokens);
 v1.route("/", chat);
 v1.route("/", tickets);
+v1.route("/", codeIndex);
 
 export default v1;

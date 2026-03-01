@@ -221,11 +221,23 @@ app.post("/bundles/sync", async (c) => {
   }
 
   const tickets = await provider.listTickets({});
+  const ticketRefs = tickets.map((t) => t.key);
+  const latestBundles = await bundleStore.getLatestBundlesByTickets(workspaceId, ticketRefs);
+
   let synced = 0;
+  let skipped = 0;
   const errors: string[] = [];
 
   for (const ticket of tickets) {
     try {
+      if (ticket.updated_at) {
+        const latest = latestBundles.get(ticket.key);
+        if (latest && new Date(ticket.updated_at) <= new Date(latest.updated_at)) {
+          skipped++;
+          continue;
+        }
+      }
+
       const bundle = await buildBundle({
         workspace_id: workspaceId,
         ticket_id: ticket.key,
@@ -236,7 +248,7 @@ app.post("/bundles/sync", async (c) => {
     }
   }
 
-  return c.json({ total: tickets.length, synced, errors });
+  return c.json({ total: tickets.length, synced, skipped, errors });
 });
 
 export default app;

@@ -17,5 +17,24 @@ services:
       timeout: 3s
       retries: 5
 
+  pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: orca-pgvector
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: orca
+      POSTGRES_PASSWORD: orca
+      POSTGRES_DB: orca_vectors
+    ports:
+      - "5434:5432"
+    volumes:
+      - orca_vectordata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orca -d orca_vectors"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
 volumes:
   orca_pgdata:
+  orca_vectordata:

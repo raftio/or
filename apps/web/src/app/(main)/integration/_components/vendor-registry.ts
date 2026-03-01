@@ -2,11 +2,13 @@ import type { ComponentType } from "react";
 
 import { JiraCard } from "./jira-card";
 import { GitHubIssuesCard } from "./github-issues-card";
+import { GitHubCodeCard } from "./github-code-card";
 import { IdeCard } from "./ide-card";
 import { NotionCard } from "./notion-card";
 
 import { JiraForm } from "./jira-form";
 import { GitHubIssuesForm } from "./github-issues-form";
+import { GitHubCodeForm } from "./github-code-form";
 import { IdeSetup } from "./ide-setup";
 import { NotionForm } from "./notion-form";
 
@@ -55,6 +57,14 @@ export const VENDORS: VendorConfig[] = [
     integrationProvider: "notion",
     cardComponent: NotionCard,
     formComponent: NotionForm,
+  },
+  {
+    id: "github_code",
+    title: "GitHub Code",
+    sourceType: "code",
+    integrationProvider: "github_code",
+    cardComponent: GitHubCodeCard,
+    formComponent: GitHubCodeForm,
   },
   {
     id: "ide",

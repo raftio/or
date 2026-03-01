@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { useAuth } from "@/components/auth-provider";
+import { SuccessToast } from "@/components/success-toast";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -106,6 +107,7 @@ export default function BundleDetailPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [completionToast, setCompletionToast] = useState<string | null>(null);
 
   const fetchBundle = useCallback(async () => {
     if (!activeWorkspace || !token || !id) return;
@@ -170,10 +172,16 @@ export default function BundleDetailPage() {
           const current = data.bundles.find((b) => b.id === bundle.id) ?? data.bundles[0];
           if (current) setBundle(current);
           setHistory(data.bundles.sort((a, b) => b.version - a.version));
-          setStatusNotification({
-            type: "success",
-            message: `All versions marked as ${newStatus} (${data.updated} updated).`,
-          });
+          if (newStatus === "completed") {
+            setCompletionToast(
+              `"${bundle.title || bundle.ticket_ref}" marked as complete (${data.updated} version${data.updated !== 1 ? "s" : ""} updated).`,
+            );
+          } else {
+            setStatusNotification({
+              type: "success",
+              message: `All versions marked as ${newStatus} (${data.updated} updated).`,
+            });
+          }
         } else {
           const errData = await res.json().catch(() => ({}));
           setStatusNotification({
@@ -695,6 +703,14 @@ export default function BundleDetailPage() {
             </div>
           )}
         </section>
+      )}
+
+      {completionToast && (
+        <SuccessToast
+          message={completionToast}
+          duration={5000}
+          onDismiss={() => setCompletionToast(null)}
+        />
       )}
     </div>
   );

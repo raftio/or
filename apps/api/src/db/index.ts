@@ -131,7 +131,7 @@ export async function ensureBundleTables(): Promise<void> {
       spec_ref                 TEXT NOT NULL DEFAULT '',
       version                  INTEGER NOT NULL,
       content_hash             TEXT NOT NULL,
-      status                   TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed')),
+      status                   TEXT NOT NULL DEFAULT 'active',
       tasks                    JSONB NOT NULL,
       dependencies             JSONB,
       acceptance_criteria_refs JSONB NOT NULL DEFAULT '[]',
@@ -143,8 +143,8 @@ export async function ensureBundleTables(): Promise<void> {
     ALTER TABLE workspace_bundles ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '';
     ALTER TABLE workspace_bundles ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
     DO $$ BEGIN
-      ALTER TABLE workspace_bundles ADD CONSTRAINT chk_bundle_status CHECK (status IN ('active', 'completed'));
-    EXCEPTION WHEN duplicate_object THEN NULL;
+      ALTER TABLE workspace_bundles DROP CONSTRAINT IF EXISTS chk_bundle_status;
+    EXCEPTION WHEN undefined_object THEN NULL;
     END $$;
     CREATE INDEX IF NOT EXISTS idx_bundles_workspace_ticket
       ON workspace_bundles(workspace_id, ticket_ref);

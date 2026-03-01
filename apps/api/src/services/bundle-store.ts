@@ -1,9 +1,10 @@
 import { query } from "../db/index.js";
-import type { ExecutionBundle } from "@orca/domain";
+import type { ExecutionBundle, BundleStatus } from "@orca/domain";
 
 export interface CreateBundleInput {
   workspace_id: string;
   ticket_ref: string;
+  title?: string;
   spec_ref?: string;
   content_hash?: string;
   tasks?: ExecutionBundle["tasks"];
@@ -54,9 +55,11 @@ interface BundleRow {
   id: string;
   workspace_id: string;
   ticket_ref: string;
+  title: string;
   spec_ref: string;
   version: number;
   content_hash: string;
+  status: BundleStatus;
   tasks: ExecutionBundle["tasks"];
   dependencies: ExecutionBundle["dependencies"] | null;
   acceptance_criteria_refs: string[];
@@ -69,8 +72,10 @@ function rowToBundle(row: BundleRow): ExecutionBundle {
   return {
     id: row.id,
     version: row.version,
+    title: row.title ?? "",
     spec_ref: row.spec_ref,
     ticket_ref: row.ticket_ref,
+    status: row.status ?? "active",
     tasks: row.tasks,
     dependencies: row.dependencies ?? undefined,
     acceptance_criteria_refs: row.acceptance_criteria_refs,
@@ -85,12 +90,13 @@ function rowToBundle(row: BundleRow): ExecutionBundle {
 export async function createBundle(input: CreateBundleInput): Promise<ExecutionBundle> {
   const result = await query<BundleRow>(
     `INSERT INTO workspace_bundles
-       (workspace_id, ticket_ref, spec_ref, version, content_hash, tasks, dependencies, acceptance_criteria_refs, context)
-     VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8)
+       (workspace_id, ticket_ref, title, spec_ref, version, content_hash, tasks, dependencies, acceptance_criteria_refs, context)
+     VALUES ($1, $2, $3, $4, 1, $5, $6, $7, $8, $9)
      RETURNING *`,
     [
       input.workspace_id,
       input.ticket_ref,
+      input.title ?? "",
       input.spec_ref ?? "",
       input.content_hash ?? "",
       JSON.stringify(input.tasks ?? []),
@@ -111,13 +117,14 @@ export async function storeBundle(
 ): Promise<ExecutionBundle> {
   const result = await query<BundleRow>(
     `INSERT INTO workspace_bundles
-       (id, workspace_id, ticket_ref, spec_ref, version, content_hash, tasks, dependencies, acceptance_criteria_refs, context)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (id, workspace_id, ticket_ref, title, spec_ref, version, content_hash, tasks, dependencies, acceptance_criteria_refs, context)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
     [
       bundle.id,
       workspaceId,
       bundle.ticket_ref,
+      bundle.title,
       bundle.spec_ref,
       bundle.version,
       contentHash,
@@ -260,4 +267,22 @@ export async function listBundles(
     bundles: dataResult.rows.map(rowToBundle),
     total: Number(countResult.rows[0].count),
   };
+}
+
+export async function updateBundleStatus(
+  workspaceId: string,
+  bundleId: string,
+  status: BundleStatus,
+): Promise<ExecutionBundle | undefined> {
+  const result = await query<BundleRow>(
+    `UPDATE workspace_bundles
+     SET status = $1, updated_at = now()
+     WHERE id = $2 AND workspace_id = $3
+     RETURNING *`,
+    [status, bundleId, workspaceId],
+  );
+  if (result.rowCount === 0) return undefined;
+  const bundle = rowToBundle(result.rows[0]);
+  cacheSet(bundle, workspaceId);
+  return bundle;
 }

@@ -2,7 +2,9 @@ import { query } from "../db/index.js";
 
 interface BundleSummary {
   id: string;
+  title: string;
   ticket_ref: string;
+  status: string;
   version: number;
   tasks: { id: string; title: string }[];
   created_at: string;
@@ -21,12 +23,14 @@ export async function buildChatContext(workspaceId: string): Promise<string> {
   try {
     const bundleResult = await query<{
       id: string;
+      title: string;
       ticket_ref: string;
+      status: string;
       version: number;
       tasks: { id: string; title: string; description?: string }[];
       created_at: string;
     }>(
-      `SELECT id, ticket_ref, version, tasks, created_at
+      `SELECT id, title, ticket_ref, status, version, tasks, created_at
        FROM workspace_bundles
        WHERE workspace_id = $1
        ORDER BY created_at DESC
@@ -36,12 +40,13 @@ export async function buildChatContext(workspaceId: string): Promise<string> {
 
     if (bundleResult.rows.length > 0) {
       const bundleLines = bundleResult.rows.map((b: BundleSummary) => {
+        const displayTitle = b.title || b.ticket_ref;
         const taskList = b.tasks
           .slice(0, 5)
           .map((t) => `  - ${t.id}: ${t.title}`)
           .join("\n");
         const more = b.tasks.length > 5 ? `\n  - ... and ${b.tasks.length - 5} more tasks` : "";
-        return `- **${b.ticket_ref}** (v${b.version}, ${b.created_at})\n${taskList}${more}`;
+        return `- **${displayTitle}** [${b.ticket_ref}] (v${b.version}, ${b.status}, ${b.created_at})\n${taskList}${more}`;
       });
       sections.push(`### Recent Bundles (${bundleResult.rows.length})\n\n${bundleLines.join("\n\n")}`);
     }

@@ -92,8 +92,10 @@ export async function buildBundle(
   const bundle: ExecutionBundle = {
     id,
     version: nextVersion,
+    title: context.ticket_title ?? "",
     spec_ref,
     ticket_ref,
+    status: "active",
     tasks,
     dependencies,
     acceptance_criteria_refs,

@@ -127,9 +127,11 @@ export async function ensureBundleTables(): Promise<void> {
       id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       workspace_id             UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
       ticket_ref               TEXT NOT NULL,
+      title                    TEXT NOT NULL DEFAULT '',
       spec_ref                 TEXT NOT NULL DEFAULT '',
       version                  INTEGER NOT NULL,
       content_hash             TEXT NOT NULL,
+      status                   TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed')),
       tasks                    JSONB NOT NULL,
       dependencies             JSONB,
       acceptance_criteria_refs JSONB NOT NULL DEFAULT '[]',
@@ -138,6 +140,12 @@ export async function ensureBundleTables(): Promise<void> {
       updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE(workspace_id, ticket_ref, version)
     );
+    ALTER TABLE workspace_bundles ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '';
+    ALTER TABLE workspace_bundles ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+    DO $$ BEGIN
+      ALTER TABLE workspace_bundles ADD CONSTRAINT chk_bundle_status CHECK (status IN ('active', 'completed'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
     CREATE INDEX IF NOT EXISTS idx_bundles_workspace_ticket
       ON workspace_bundles(workspace_id, ticket_ref);
     CREATE INDEX IF NOT EXISTS idx_bundles_hash

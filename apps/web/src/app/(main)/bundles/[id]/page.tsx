@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { useAuth } from "@/components/auth-provider";
@@ -19,6 +19,20 @@ interface Dependency {
   dependsOn: string;
 }
 
+interface CodeSearchResult {
+  file: string;
+  lines: string;
+  language: string | null;
+  score: number;
+  code: string;
+}
+
+interface DocSection {
+  id: string;
+  title: string;
+  body: string;
+}
+
 interface Bundle {
   id: string;
   version: number;
@@ -32,6 +46,11 @@ interface Bundle {
   context?: {
     excerpts?: string[];
     related_ticket_ids?: string[];
+  };
+  meta?: {
+    code_search_results?: CodeSearchResult[];
+    doc_sections?: DocSection[];
+    [key: string]: unknown;
   };
   created_at: string;
   updated_at: string;
@@ -72,6 +91,7 @@ function dependencyLabel(dep: Dependency, tasks: BundleTask[]): string {
 
 export default function BundleDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { activeWorkspace } = useWorkspace();
   const { token } = useAuth();
 
@@ -81,6 +101,7 @@ export default function BundleDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
   const [statusNotification, setStatusNotification] = useState<{
     type: "success" | "error";
     message: string;
@@ -172,6 +193,54 @@ export default function BundleDetailPage() {
     [activeWorkspace, token, bundle],
   );
 
+  const rebuildBundle = useCallback(async () => {
+    if (!activeWorkspace || !token || !bundle) return;
+    setRebuilding(true);
+    setStatusNotification(null);
+    try {
+      const res = await fetch(
+        `${apiUrl}/v1/workspaces/${activeWorkspace.id}/bundles`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ticket_ref: bundle.ticket_ref,
+            spec_ref: bundle.spec_ref || undefined,
+            build_from_ticket: true,
+          }),
+        },
+      );
+      if (res.ok) {
+        const newBundle: Bundle = await res.json();
+        if (newBundle.id !== bundle.id) {
+          router.push(`/bundles/${newBundle.id}`);
+        } else {
+          setBundle(newBundle);
+          setStatusNotification({
+            type: "success",
+            message: "Bundle is already up to date (content unchanged).",
+          });
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setStatusNotification({
+          type: "error",
+          message: errData.error || `Failed to rebuild bundle (${res.status}).`,
+        });
+      }
+    } catch {
+      setStatusNotification({
+        type: "error",
+        message: "Network error — could not rebuild bundle.",
+      });
+    } finally {
+      setRebuilding(false);
+    }
+  }, [activeWorkspace, token, bundle, router]);
+
   useEffect(() => {
     fetchBundle();
   }, [fetchBundle]);
@@ -211,6 +280,9 @@ export default function BundleDetailPage() {
     bundle.context &&
     ((bundle.context.excerpts && bundle.context.excerpts.length > 0) ||
       (bundle.context.related_ticket_ids && bundle.context.related_ticket_ids.length > 0));
+  const codeRefs = bundle.meta?.code_search_results ?? [];
+  const docRefs = bundle.meta?.doc_sections ?? [];
+  const hasRefs = codeRefs.length > 0 || docRefs.length > 0;
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
@@ -258,31 +330,45 @@ export default function BundleDetailPage() {
               {bundle.status}
             </span>
           </div>
-          {bundle.status === "active" ? (
+          <div className="flex shrink-0 items-center gap-2">
             <button
-              onClick={() => updateStatus("completed")}
-              disabled={statusUpdating}
-              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+              onClick={rebuildBundle}
+              disabled={rebuilding || statusUpdating}
+              className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-base-border bg-surface px-3 py-1.5 text-sm font-medium text-base-text transition-colors hover:bg-base disabled:opacity-50"
             >
-              {statusUpdating ? (
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="20 6 9 17 4 12"/></svg>
-              )}
-              Mark Complete
-            </button>
-          ) : (
-            <button
-              onClick={() => updateStatus("active")}
-              disabled={statusUpdating}
-              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-base-border bg-surface px-3 py-1.5 text-sm font-medium text-base-text transition-colors hover:bg-base disabled:opacity-50"
-            >
-              {statusUpdating && (
+              {rebuilding ? (
                 <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-base-border border-t-base-text" />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
               )}
-              Reopen
+              Rebuild
             </button>
-          )}
+            {bundle.status === "active" ? (
+              <button
+                onClick={() => updateStatus("completed")}
+                disabled={statusUpdating || rebuilding}
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+              >
+                {statusUpdating ? (
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="20 6 9 17 4 12"/></svg>
+                )}
+                Mark Complete
+              </button>
+            ) : (
+              <button
+                onClick={() => updateStatus("active")}
+                disabled={statusUpdating || rebuilding}
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-base-border bg-surface px-3 py-1.5 text-sm font-medium text-base-text transition-colors hover:bg-base disabled:opacity-50"
+              >
+                {statusUpdating && (
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-base-border border-t-base-text" />
+                )}
+                Reopen
+              </button>
+            )}
+          </div>
         </div>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-base-text-muted">
           <span className="font-mono">{bundle.ticket_ref}</span>
@@ -550,6 +636,64 @@ export default function BundleDetailPage() {
                 </div>
               </div>
             )}
+        </section>
+      )}
+
+      {/* References */}
+      {hasRefs && (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold text-base-text">References</h2>
+
+          {codeRefs.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-base-text-muted">Code</p>
+              <div className="mt-2 space-y-3">
+                {codeRefs.map((ref, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-xl border border-base-border bg-surface p-4"
+                  >
+                    <div className="flex items-center gap-2 text-sm">
+                      <code className="font-mono text-xs text-primary">{ref.file}</code>
+                      <span className="text-[10px] text-base-text-muted">
+                        lines {ref.lines}
+                      </span>
+                      {ref.language && (
+                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                          {ref.language}
+                        </span>
+                      )}
+                      <span className="ml-auto text-[10px] text-base-text-muted">
+                        score {ref.score}
+                      </span>
+                    </div>
+                    <pre className="mt-2 overflow-x-auto rounded-lg bg-base p-3 text-xs text-base-text">
+                      <code>{ref.code}</code>
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {docRefs.length > 0 && (
+            <div className={codeRefs.length > 0 ? "mt-4" : "mt-3"}>
+              <p className="text-xs font-medium text-base-text-muted">Documents</p>
+              <div className="mt-2 space-y-3">
+                {docRefs.map((sec) => (
+                  <div
+                    key={sec.id}
+                    className="rounded-xl border border-base-border bg-surface p-4"
+                  >
+                    <p className="text-sm font-medium text-base-text">{sec.title}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-xs text-base-text-muted">
+                      {sec.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
     </div>

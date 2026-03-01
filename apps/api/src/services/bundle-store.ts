@@ -13,6 +13,7 @@ export interface CreateBundleInput {
   dependencies?: ExecutionBundle["dependencies"];
   acceptance_criteria_refs?: string[];
   context?: ExecutionBundle["context"];
+  meta?: Record<string, unknown>;
 }
 
 // ── LRU cache ────────────────────────────────────────────────────────────
@@ -66,6 +67,7 @@ interface BundleRow {
   dependencies: ExecutionBundle["dependencies"] | null;
   acceptance_criteria_refs: string[];
   context: ExecutionBundle["context"] | null;
+  meta: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -82,6 +84,7 @@ function rowToBundle(row: BundleRow): ExecutionBundle {
     dependencies: row.dependencies ?? undefined,
     acceptance_criteria_refs: row.acceptance_criteria_refs,
     context: row.context ?? undefined,
+    ...(row.meta ? { meta: row.meta } : {}),
     created_at: new Date(row.created_at).toISOString(),
     updated_at: new Date(row.updated_at).toISOString(),
   };
@@ -92,8 +95,8 @@ function rowToBundle(row: BundleRow): ExecutionBundle {
 export async function createBundle(input: CreateBundleInput): Promise<ExecutionBundle> {
   const result = await query<BundleRow>(
     `INSERT INTO workspace_bundles
-       (workspace_id, ticket_ref, title, spec_ref, version, content_hash, tasks, dependencies, acceptance_criteria_refs, context)
-     VALUES ($1, $2, $3, $4, 1, $5, $6, $7, $8, $9)
+       (workspace_id, ticket_ref, title, spec_ref, version, content_hash, tasks, dependencies, acceptance_criteria_refs, context, meta)
+     VALUES ($1, $2, $3, $4, 1, $5, $6, $7, $8, $9, $10)
      RETURNING *`,
     [
       input.workspace_id,
@@ -105,6 +108,7 @@ export async function createBundle(input: CreateBundleInput): Promise<ExecutionB
       input.dependencies ? JSON.stringify(input.dependencies) : null,
       JSON.stringify(input.acceptance_criteria_refs ?? []),
       input.context ? JSON.stringify(input.context) : null,
+      input.meta ? JSON.stringify(input.meta) : null,
     ],
   );
   const bundle = rowToBundle(result.rows[0]);
@@ -119,8 +123,8 @@ export async function storeBundle(
 ): Promise<ExecutionBundle> {
   const result = await query<BundleRow>(
     `INSERT INTO workspace_bundles
-       (id, workspace_id, ticket_ref, title, spec_ref, version, content_hash, tasks, dependencies, acceptance_criteria_refs, context)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       (id, workspace_id, ticket_ref, title, spec_ref, version, content_hash, tasks, dependencies, acceptance_criteria_refs, context, meta)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING *`,
     [
       bundle.id,
@@ -134,6 +138,7 @@ export async function storeBundle(
       bundle.dependencies ? JSON.stringify(bundle.dependencies) : null,
       JSON.stringify(bundle.acceptance_criteria_refs),
       bundle.context ? JSON.stringify(bundle.context) : null,
+      bundle.meta ? JSON.stringify(bundle.meta) : null,
     ],
   );
   const stored = rowToBundle(result.rows[0]);

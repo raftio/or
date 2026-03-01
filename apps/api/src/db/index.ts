@@ -142,6 +142,7 @@ export async function ensureBundleTables(): Promise<void> {
     );
     ALTER TABLE workspace_bundles ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '';
     ALTER TABLE workspace_bundles ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+    ALTER TABLE workspace_bundles ADD COLUMN IF NOT EXISTS meta JSONB;
     DO $$ BEGIN
       ALTER TABLE workspace_bundles DROP CONSTRAINT IF EXISTS chk_bundle_status;
     EXCEPTION WHEN undefined_object THEN NULL;

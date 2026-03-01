@@ -152,6 +152,10 @@ export async function buildBundle(
     }
   }
 
+  if (context.sections?.length) {
+    meta.doc_sections = context.sections;
+  }
+
   const bundle: ExecutionBundle = {
     id,
     version: nextVersion,

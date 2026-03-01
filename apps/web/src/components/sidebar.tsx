@@ -2,9 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useWorkspace } from "./workspace-provider";
-import { useAuth } from "./auth-provider";
 
 const mainItems = [
   {
@@ -92,162 +89,12 @@ const workspaceItems = [
   },
 ];
 
-function WorkspaceSwitcher() {
-  const { workspaces, activeWorkspace, switchWorkspace, refreshWorkspaces } = useWorkspace();
-  const { token } = useAuth();
-  const [open, setOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [error, setError] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setCreating(false);
-        setNewName("");
-        setError("");
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  const handleCreate = useCallback(async () => {
-    if (!newName.trim() || !token) return;
-    setError("");
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-    try {
-      const res = await fetch(`${apiUrl}/v1/workspaces`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: newName.trim() }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || "Failed to create workspace");
-        return;
-      }
-      const data = await res.json();
-      await refreshWorkspaces();
-      switchWorkspace(data.workspace.id);
-      setCreating(false);
-      setNewName("");
-      setOpen(false);
-    } catch {
-      setError("Network error");
-    }
-  }, [newName, token, refreshWorkspaces, switchWorkspace]);
-
-  return (
-    <div ref={ref} className="relative px-2.5 pb-2.5">
-      <button
-        type="button"
-        onClick={() => setOpen((p) => !p)}
-        className="flex w-full items-center gap-2 rounded-lg border border-base-border bg-surface px-2.5 py-1.5 text-left text-[13px] font-medium text-base-text transition-colors hover:bg-primary/5"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-primary">
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-        </svg>
-        <span className="flex-1 truncate">
-          {activeWorkspace?.name ?? "Select workspace"}
-        </span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-base-text-muted">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="absolute left-3 right-3 z-50 mt-1 rounded-lg border border-base-border bg-surface py-1 shadow-lg">
-          {workspaces.map((ws) => (
-            <button
-              key={ws.id}
-              type="button"
-              onClick={() => {
-                switchWorkspace(ws.id);
-                setOpen(false);
-              }}
-              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
-                ws.id === activeWorkspace?.id
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-base-text-muted hover:bg-primary/5 hover:text-base-text"
-              }`}
-            >
-              <span className="flex-1 truncate">{ws.name}</span>
-              {ws.id === activeWorkspace?.id && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
-            </button>
-          ))}
-
-          <div className="border-t border-base-border mt-1 pt-1">
-            {creating ? (
-              <div className="px-3 py-2">
-                <input
-                  type="text"
-                  placeholder="Workspace name"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                  autoFocus
-                  className="w-full rounded border border-base-border bg-base px-2 py-1.5 text-sm text-base-text placeholder:text-base-text-muted focus:border-primary focus:outline-none"
-                />
-                {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCreate}
-                    className="rounded bg-primary px-3 py-1 text-xs font-medium text-base transition-colors hover:bg-primary-hover"
-                  >
-                    Create
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCreating(false); setNewName(""); setError(""); }}
-                    className="rounded px-3 py-1 text-xs font-medium text-base-text-muted transition-colors hover:text-base-text"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setCreating(true)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-primary/5"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Create workspace
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
     <aside className="flex h-full w-52 shrink-0 flex-col border-r border-base-border bg-surface-alt">
-      <div className="pt-3">
-        <WorkspaceSwitcher />
-      </div>
-
-      <nav className="flex-1 overflow-y-auto px-2.5 pb-4">
+      <nav className="flex-1 overflow-y-auto px-2.5 pt-3 pb-4">
         <ul className="flex flex-col gap-0.5">
           {mainItems.map(({ label, href, match, icon }) => {
             const active = match === "prefix" ? pathname.startsWith(href) : pathname === href;

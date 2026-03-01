@@ -7,6 +7,7 @@ import { useAuth } from "../../../components/auth-provider";
 import { useWorkspace } from "../../../components/workspace-provider";
 import { ChatMarkdown } from "../../../components/chat-markdown";
 import { ImageLightbox } from "../../../components/image-lightbox";
+import { useNavbarSlot } from "../../../components/navbar-slot-provider";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -445,6 +446,7 @@ export default function ChatPage() {
 }
 
 function ChatInner({ workspaceId, token }: { workspaceId: string; token: string | null }) {
+  const setNavbarSlot = useNavbarSlot();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarLoading, setSidebarLoading] = useState(false);
@@ -702,72 +704,51 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
 
   const activeTitle = conversations.find((c) => c.id === activeConversationId)?.title;
 
-  return (
-    <div className="relative flex h-full flex-col">
-      {/* Header bar */}
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-base-border bg-surface px-4">
+  useEffect(() => {
+    setNavbarSlot(
+      <div className="flex items-center gap-2.5">
         <button
           type="button"
-          onClick={() => setShowPanel((p) => !p)}
+          onClick={() => setShowPanel((p: boolean) => !p)}
           className="rounded-lg p-1.5 text-base-text-muted transition-colors hover:bg-primary/5 hover:text-base-text"
           title="Toggle conversations"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {showPanel ? (
-              <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
-            ) : (
-              <><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></>
-            )}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-
-        <span className="flex-1 truncate text-sm font-medium text-base-text">
+        <span className="max-w-[220px] truncate text-[13px] font-medium text-base-text">
           {activeTitle ?? "New conversation"}
         </span>
+        {streamStatus === "connected" && (
+          <div className="h-2 w-2 rounded-full bg-green-400" title="Live" />
+        )}
+        {streamStatus !== "connected" && streamStatus !== "disconnected" && (
+          <div className={`h-2 w-2 rounded-full ${streamStatus === "connecting" ? "animate-pulse bg-amber-400" : "bg-red-400"}`}
+            title={streamStatus === "connecting" ? "Connecting..." : streamError ?? "Error"} />
+        )}
+        <button
+          type="button"
+          onClick={startNewChat}
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          New Chat
+        </button>
+      </div>,
+    );
+    return () => setNavbarSlot(null);
+  }, [activeTitle, streamStatus, streamError, startNewChat, setNavbarSlot, setShowPanel]);
 
-        <div className="flex items-center gap-2">
-          {events.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowEvents((p) => !p)}
-              className="relative flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-base-text-muted transition-colors hover:bg-primary/5 hover:text-base-text"
-              title="Toggle event feed"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
-                {events.length}
-              </span>
-            </button>
-          )}
-
-          {streamStatus !== "connected" && streamStatus !== "disconnected" && (
-            <div className={`h-2 w-2 rounded-full ${streamStatus === "connecting" ? "animate-pulse bg-amber-400" : "bg-red-400"}`}
-              title={streamStatus === "connecting" ? "Connecting..." : streamError ?? "Error"} />
-          )}
-          {streamStatus === "connected" && (
-            <div className="h-2 w-2 rounded-full bg-green-400" title="Live" />
-          )}
-
-          <button
-            type="button"
-            onClick={startNewChat}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            New Chat
-          </button>
-        </div>
-      </div>
-
+  return (
+    <div className="relative flex h-full flex-col">
       {/* Conversation panel (slide-over) */}
       {showPanel && (
         <>
-          <div className="absolute inset-0 top-12 z-20 bg-black/20" onClick={() => setShowPanel(false)} />
-          <div className="absolute left-0 top-12 bottom-0 z-30 flex w-72 flex-col border-r border-base-border bg-surface shadow-xl">
+          <div className="absolute inset-0 z-20 bg-black/20" onClick={() => setShowPanel(false)} />
+          <div className="absolute left-0 top-0 bottom-0 z-30 flex w-72 flex-col border-r border-base-border bg-surface shadow-xl">
             <div className="flex items-center justify-between border-b border-base-border px-4 py-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-base-text-muted">
                 Conversations

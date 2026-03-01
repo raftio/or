@@ -6,6 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
 import { useAuth } from "@/components/auth-provider";
 import { WorkspaceProvider } from "@/components/workspace-provider";
+import { NavbarSlotProvider } from "@/components/navbar-slot-provider";
 
 export default function MainLayout({
   children,
@@ -36,13 +37,15 @@ export default function MainLayout({
 
   return (
     <WorkspaceProvider>
-      <div className="flex h-screen flex-col overflow-hidden">
-        <Navbar />
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto">{children}</main>
+      <NavbarSlotProvider>
+        <div className="flex h-screen flex-col overflow-hidden">
+          <Navbar />
+          <div className="flex flex-1 overflow-hidden">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto">{children}</main>
+          </div>
         </div>
-      </div>
+      </NavbarSlotProvider>
     </WorkspaceProvider>
   );
 }

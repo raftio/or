@@ -32,6 +32,35 @@ const MOCK_TICKETS: Record<string, TicketDto> = {
   },
 };
 
+const STUB_TITLES = [
+  "Implement user authentication flow",
+  "Add dark mode toggle to settings",
+  "Refactor database connection pooling",
+  "Build notification system for events",
+  "Create dashboard analytics widgets",
+  "Fix pagination in search results",
+  "Add CSV export for reports",
+  "Implement role-based access control",
+  "Set up CI/CD pipeline for staging",
+  "Add WebSocket support for real-time updates",
+  "Migrate legacy API to REST v2",
+  "Build onboarding wizard for new users",
+  "Add multi-language support (i18n)",
+  "Implement file upload with drag-and-drop",
+  "Create audit log for admin actions",
+  "Add two-factor authentication",
+  "Build API rate limiting middleware",
+  "Implement full-text search with filters",
+  "Add automated backup scheduling",
+  "Create Slack integration for alerts",
+];
+
+function stableStubTitle(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+  return STUB_TITLES[Math.abs(hash) % STUB_TITLES.length];
+}
+
 export function createStubTicketProvider(): TicketProvider {
   return {
     async getTicket(id: string): Promise<TicketDto | null> {
@@ -41,7 +70,7 @@ export function createStubTicketProvider(): TicketProvider {
       return {
         id: key.toLowerCase(),
         key,
-        title: `Ticket ${id}`,
+        title: stableStubTitle(id),
         description: `Mock description for ${id}`,
         status: "Todo",
         acceptance_criteria: [{ id: `${key}/ac/1`, description: "Default AC" }],

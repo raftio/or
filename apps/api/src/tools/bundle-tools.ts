@@ -29,7 +29,9 @@ export const bundleTools: ToolFactory = (ctx) => ({
         return {
           bundles: bundles.slice(0, limit ?? 10).map((b) => ({
             id: b.id,
+            title: b.title,
             ticketRef: b.ticket_ref,
+            status: b.status,
             version: b.version,
             tasks: b.tasks.map((t) => ({ id: t.id, title: t.title })),
             createdAt: b.created_at,
@@ -43,7 +45,9 @@ export const bundleTools: ToolFactory = (ctx) => ({
       return {
         bundles: result.bundles.map((b) => ({
           id: b.id,
+          title: b.title,
           ticketRef: b.ticket_ref,
+          status: b.status,
           version: b.version,
           tasks: b.tasks.map((t) => ({ id: t.id, title: t.title })),
           createdAt: b.created_at,
@@ -63,8 +67,10 @@ export const bundleTools: ToolFactory = (ctx) => ({
       if (!bundle) return { error: "Bundle not found" };
       return {
         id: bundle.id,
+        title: bundle.title,
         ticketRef: bundle.ticket_ref,
         specRef: bundle.spec_ref,
+        status: bundle.status,
         version: bundle.version,
         tasks: bundle.tasks,
         dependencies: bundle.dependencies,
@@ -79,6 +85,9 @@ export const bundleTools: ToolFactory = (ctx) => ({
     description:
       "Create a new execution bundle from the user's idea. Decompose the idea into concrete tasks with titles and descriptions.",
     inputSchema: z.object({
+      title: z
+        .string()
+        .describe("A concise, descriptive title for the bundle"),
       ticketRef: z
         .string()
         .describe("Ticket reference for the bundle (e.g. PROJ-42)"),
@@ -97,16 +106,19 @@ export const bundleTools: ToolFactory = (ctx) => ({
         .min(1)
         .describe("List of tasks that make up the bundle"),
     }),
-    execute: async ({ ticketRef, specRef, tasks }) => {
+    execute: async ({ title, ticketRef, specRef, tasks }) => {
       const bundle = await bundleStore.createBundle({
         workspace_id: ctx.workspaceId,
+        title,
         ticket_ref: ticketRef,
         spec_ref: specRef,
         tasks,
       });
       return {
         id: bundle.id,
+        title: bundle.title,
         ticketRef: bundle.ticket_ref,
+        status: bundle.status,
         version: bundle.version,
         tasks: bundle.tasks,
         createdAt: bundle.created_at,

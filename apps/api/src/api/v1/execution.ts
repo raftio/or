@@ -1,8 +1,10 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import { BundleStatusSchema } from "@orca/domain";
 import * as bundleStore from "../../services/bundle-store.js";
 import { buildBundle } from "../../services/bundling-engine.js";
 import { createTicketProviderForWorkspace } from "../../adapters/ticket/index.js";
+import { createEvent } from "../../services/event-store.js";
 import { authMiddleware } from "../../middleware/auth.js";
 import { requireWorkspaceMember } from "../../middleware/workspace-auth.js";
 
@@ -22,6 +24,7 @@ app.use("*", authMiddleware as never);
 
 const CreateBundleBodySchema = z.object({
   ticket_ref: z.string().min(1),
+  title: z.string().optional(),
   spec_ref: z.string().optional(),
   build_from_ticket: z.boolean().optional(),
   use_ai: z.boolean().optional(),
@@ -142,6 +145,48 @@ app.get("/workspaces/:workspaceId/bundles/:ticketRef/history", async (c) => {
   const ticketRef = decodeURIComponent(c.req.param("ticketRef"));
   const bundles = await bundleStore.getBundleHistory(workspaceId, ticketRef);
   return c.json({ bundles });
+});
+
+const UpdateBundleStatusSchema = z.object({
+  status: BundleStatusSchema,
+});
+
+app.patch("/workspaces/:workspaceId/bundles/:id/status", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("workspaceId");
+
+  const memberCheck = await requireWorkspaceMember(workspaceId, userId);
+  if (!memberCheck.ok) {
+    return c.json({ error: memberCheck.error }, memberCheck.status);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = UpdateBundleStatusSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      { error: "Validation failed", details: parsed.error.flatten() },
+      400,
+    );
+  }
+
+  const bundle = await bundleStore.updateBundleStatus(
+    workspaceId,
+    c.req.param("id"),
+    parsed.data.status,
+  );
+  if (!bundle) {
+    return c.json({ error: "Bundle not found" }, 404);
+  }
+
+  await createEvent(
+    workspaceId,
+    "bundle.updated",
+    `Bundle ${bundle.ticket_ref} marked as ${parsed.data.status}`,
+    { bundle_id: bundle.id, status: parsed.data.status },
+    userId,
+  );
+
+  return c.json(bundle);
 });
 
 // ── Legacy endpoints (backward-compatible, no workspace scope) ───────────

@@ -16,8 +16,10 @@ interface BundleTask {
 interface Bundle {
   id: string;
   version: number;
+  title: string;
   spec_ref: string;
   ticket_ref: string;
+  status: "active" | "completed";
   tasks: BundleTask[];
   acceptance_criteria_refs: string[];
   created_at: string;
@@ -130,13 +132,24 @@ export default function BundlesPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="truncate text-sm font-medium text-base-text">
-                      {b.ticket_ref}
+                      {b.title || b.ticket_ref}
                     </p>
                     <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                       v{b.version}
                     </span>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                        b.status === "completed"
+                          ? "bg-green-500/10 text-green-500"
+                          : "bg-amber-400/10 text-amber-400"
+                      }`}
+                    >
+                      {b.status ?? "active"}
+                    </span>
                   </div>
                   <p className="mt-0.5 text-xs text-base-text-muted">
+                    <span className="font-mono">{b.ticket_ref}</span>
+                    {" · "}
                     {b.tasks.length} task{b.tasks.length !== 1 ? "s" : ""}
                     {b.spec_ref && (
                       <>

@@ -22,8 +22,10 @@ interface Dependency {
 interface Bundle {
   id: string;
   version: number;
+  title: string;
   spec_ref: string;
   ticket_ref: string;
+  status: "active" | "completed";
   tasks: BundleTask[];
   dependencies?: Dependency[];
   acceptance_criteria_refs: string[];
@@ -78,6 +80,11 @@ export default function BundleDetailPage() {
   const [evidence, setEvidence] = useState<Evidence[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [statusNotification, setStatusNotification] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const fetchBundle = useCallback(async () => {
     if (!activeWorkspace || !token || !id) return;
@@ -119,6 +126,49 @@ export default function BundleDetailPage() {
       setLoading(false);
     }
   }, [activeWorkspace, token, id]);
+
+  const updateStatus = useCallback(
+    async (newStatus: "active" | "completed") => {
+      if (!activeWorkspace || !token || !bundle) return;
+      setStatusUpdating(true);
+      setStatusNotification(null);
+      try {
+        const res = await fetch(
+          `${apiUrl}/v1/workspaces/${activeWorkspace.id}/bundles/${bundle.id}/status`,
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ status: newStatus }),
+          },
+        );
+        if (res.ok) {
+          const updated: Bundle = await res.json();
+          setBundle(updated);
+          setStatusNotification({
+            type: "success",
+            message: `Bundle marked as ${newStatus}.`,
+          });
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          setStatusNotification({
+            type: "error",
+            message: errData.error || `Failed to update status (${res.status}).`,
+          });
+        }
+      } catch {
+        setStatusNotification({
+          type: "error",
+          message: "Network error — could not update bundle status.",
+        });
+      } finally {
+        setStatusUpdating(false);
+      }
+    },
+    [activeWorkspace, token, bundle],
+  );
 
   useEffect(() => {
     fetchBundle();
@@ -167,17 +217,73 @@ export default function BundleDetailPage() {
         ← Back to bundles
       </Link>
 
+      {/* Status notification */}
+      {statusNotification && (
+        <div
+          className={`mt-4 flex items-center justify-between rounded-lg border px-4 py-2.5 text-sm ${
+            statusNotification.type === "success"
+              ? "border-green-500/30 bg-green-500/10 text-green-500"
+              : "border-red-400/30 bg-red-400/10 text-red-400"
+          }`}
+        >
+          <span>{statusNotification.message}</span>
+          <button
+            onClick={() => setStatusNotification(null)}
+            className="ml-3 shrink-0 text-current opacity-60 hover:opacity-100"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mt-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-base-text">
-            {bundle.ticket_ref}
-          </h1>
-          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-            v{bundle.version}
-          </span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-base-text">
+              {bundle.title || bundle.ticket_ref}
+            </h1>
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+              v{bundle.version}
+            </span>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                bundle.status === "completed"
+                  ? "bg-green-500/10 text-green-500"
+                  : "bg-amber-400/10 text-amber-400"
+              }`}
+            >
+              {bundle.status}
+            </span>
+          </div>
+          {bundle.status === "active" ? (
+            <button
+              onClick={() => updateStatus("completed")}
+              disabled={statusUpdating}
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+            >
+              {statusUpdating ? (
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><polyline points="20 6 9 17 4 12"/></svg>
+              )}
+              Mark Complete
+            </button>
+          ) : (
+            <button
+              onClick={() => updateStatus("active")}
+              disabled={statusUpdating}
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-base-border bg-surface px-3 py-1.5 text-sm font-medium text-base-text transition-colors hover:bg-base disabled:opacity-50"
+            >
+              {statusUpdating && (
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-base-border border-t-base-text" />
+              )}
+              Reopen
+            </button>
+          )}
         </div>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-base-text-muted">
+          <span className="font-mono">{bundle.ticket_ref}</span>
           {bundle.spec_ref && (
             <span>
               Spec: <code className="font-mono">{bundle.spec_ref}</code>

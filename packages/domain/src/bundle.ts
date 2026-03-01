@@ -18,11 +18,16 @@ const DependenciesSchema = z
   )
   .optional();
 
+export const BundleStatusSchema = z.enum(["active", "completed"]);
+export type BundleStatus = z.infer<typeof BundleStatusSchema>;
+
 export const ExecutionBundleSchema = z.object({
   id: z.string(),
   version: z.number(),
+  title: z.string(),
   spec_ref: z.string(),
   ticket_ref: z.string(),
+  status: BundleStatusSchema,
   tasks: z.array(BundleTaskSchema),
   dependencies: DependenciesSchema,
   acceptance_criteria_refs: z.array(z.string()),

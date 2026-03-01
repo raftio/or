@@ -7,6 +7,7 @@ import { createTicketProviderForWorkspace } from "../../adapters/ticket/index.js
 import { createEvent } from "../../services/event-store.js";
 import { authMiddleware } from "../../middleware/auth.js";
 import { requireWorkspaceMember } from "../../middleware/workspace-auth.js";
+import { vectorStore, embeddingProvider } from "../../tools/index.js";
 
 type Env = {
   Variables: {
@@ -83,6 +84,8 @@ app.post("/workspaces/:workspaceId/bundles", async (c) => {
       ticket_id: data.ticket_ref,
       spec_ref: data.spec_ref,
       use_ai: data.use_ai,
+      embeddingProvider: embeddingProvider ?? undefined,
+      vectorStore,
     });
     if (!bundle) {
       return c.json({ error: "Ticket not found or bundling failed" }, 404);
@@ -256,6 +259,8 @@ app.post("/bundles", async (c) => {
       ticket_id: data.ticket_ref,
       spec_ref: data.spec_ref,
       use_ai: data.use_ai,
+      embeddingProvider: embeddingProvider ?? undefined,
+      vectorStore,
     });
     if (!bundle) {
       return c.json({ error: "Ticket not found or bundling failed" }, 404);
@@ -331,6 +336,8 @@ app.post("/bundles/sync", async (c) => {
       const bundle = await buildBundle({
         workspace_id: workspaceId,
         ticket_id: ticket.key,
+        embeddingProvider: embeddingProvider ?? undefined,
+        vectorStore,
       });
       if (bundle) synced++;
     } catch (err) {

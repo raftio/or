@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { createChatAgent } from "@orca/agent";
-import type { ChatMessage } from "@orca/agent";
+import type { ChatMessage, ContentPart } from "@orca/agent";
 import { authMiddleware } from "../../middleware/auth.js";
 import { requireWorkspaceMember } from "../../middleware/workspace-auth.js";
 import * as chatStore from "../../services/chat-store.js";
+import * as chatImageStore from "../../services/chat-image-store.js";
 import { buildChatContext } from "../../services/chat-context.js";
 import { toolRegistry, memoryProvider } from "../../tools/index.js";
 import {
@@ -35,6 +36,7 @@ const ChatRequestSchema = z.object({
     }),
   ).min(1),
   conversationId: z.string().uuid().optional(),
+  imageIds: z.array(z.string().uuid()).optional(),
 });
 
 async function resolveAgent(workspaceId: string) {
@@ -92,7 +94,7 @@ app.post("/workspaces/:workspaceId/chat", async (c) => {
     return c.json({ error: "Validation failed", details: parsed.error.flatten() }, 400);
   }
 
-  const { messages, conversationId: existingConvId } = parsed.data;
+  const { messages, conversationId: existingConvId, imageIds } = parsed.data;
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
   if (!lastUserMsg) {
     return c.json({ error: "No user message found" }, 400);
@@ -111,7 +113,7 @@ app.post("/workspaces/:workspaceId/chat", async (c) => {
     conversationId = conv.id;
   }
 
-  await chatStore.addMessage(conversationId, lastUserMsg.role, lastUserMsg.content);
+  await chatStore.addMessage(conversationId, lastUserMsg.role, lastUserMsg.content, imageIds);
 
   const tools = toolRegistry.build({ workspaceId, userId, conversationId });
 
@@ -125,10 +127,23 @@ app.post("/workspaces/:workspaceId/chat", async (c) => {
     ? recentMemories.map((m) => `[${m.category}] ${m.content}`).join("\n")
     : undefined;
 
-  const chatMessages: ChatMessage[] = messages.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
+  const chatMessages: ChatMessage[] = [];
+  for (const m of messages) {
+    const isLastUser = m === lastUserMsg && imageIds?.length;
+    if (isLastUser) {
+      const parts: ContentPart[] = [];
+      for (const imgId of imageIds) {
+        const img = await chatImageStore.getImage(imgId);
+        if (img) {
+          parts.push({ type: "image", image: img.data });
+        }
+      }
+      parts.push({ type: "text", text: m.content });
+      chatMessages.push({ role: m.role, content: parts });
+    } else {
+      chatMessages.push({ role: m.role, content: m.content });
+    }
+  }
 
   const result = await agent.chat({
     messages: chatMessages,
@@ -213,4 +228,66 @@ app.delete("/workspaces/:workspaceId/chat/conversations/:id", async (c) => {
   return c.json({ ok: true });
 });
 
+// ── Image upload & serve ──────────────────────────────────────────────────
+
+app.post("/workspaces/:workspaceId/chat/images", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("workspaceId");
+
+  const memberCheck = await requireWorkspaceMember(workspaceId, userId);
+  if (!memberCheck.ok) {
+    return c.json({ error: memberCheck.error }, memberCheck.status);
+  }
+
+  const body = await c.req.parseBody();
+  const file = body["file"];
+
+  if (!(file instanceof File)) {
+    return c.json({ error: "No file provided" }, 400);
+  }
+
+  const validation = chatImageStore.validateImage(file.type, file.size);
+  if (!validation.ok) {
+    return c.json({ error: validation.error }, 400);
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const meta = await chatImageStore.saveImage(
+    workspaceId,
+    userId,
+    file.name || "image",
+    file.type,
+    buffer,
+  );
+
+  return c.json({
+    id: meta.id,
+    url: `/v1/workspaces/${workspaceId}/chat/images/${meta.id}`,
+    filename: meta.filename,
+    contentType: meta.content_type,
+    size: meta.size_bytes,
+  });
+});
+
 export default app;
+
+// Public image serve (no auth — UUID is unguessable)
+export const chatImages = new Hono();
+
+chatImages.get("/workspaces/:workspaceId/chat/images/:imageId", async (c) => {
+  const workspaceId = c.req.param("workspaceId");
+  const imageId = c.req.param("imageId");
+
+  const image = await chatImageStore.getImage(imageId);
+  if (!image || image.workspace_id !== workspaceId) {
+    return c.json({ error: "Image not found" }, 404);
+  }
+
+  return new Response(image.data, {
+    headers: {
+      "Content-Type": image.content_type,
+      "Content-Length": String(image.size_bytes),
+      "Cache-Control": "public, max-age=31536000, immutable",
+    },
+  });
+});

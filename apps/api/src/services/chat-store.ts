@@ -14,6 +14,7 @@ export interface MessageRow {
   conversation_id: string;
   role: string;
   content: string;
+  image_ids: string[];
   created_at: string;
 }
 
@@ -87,12 +88,14 @@ export async function addMessage(
   conversationId: string,
   role: string,
   content: string,
+  imageIds?: string[],
 ): Promise<MessageRow> {
+  const ids = imageIds?.length ? imageIds : [];
   const result = await query<MessageRow>(
-    `INSERT INTO workspace_chat_messages (conversation_id, role, content)
-     VALUES ($1, $2, $3)
-     RETURNING id, conversation_id, role, content, created_at`,
-    [conversationId, role, content],
+    `INSERT INTO workspace_chat_messages (conversation_id, role, content, image_ids)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, conversation_id, role, content, image_ids, created_at`,
+    [conversationId, role, content, ids],
   );
   await query(
     `UPDATE workspace_chat_conversations SET updated_at = now() WHERE id = $1`,
@@ -103,7 +106,7 @@ export async function addMessage(
 
 export async function getMessages(conversationId: string): Promise<MessageRow[]> {
   const result = await query<MessageRow>(
-    `SELECT id, conversation_id, role, content, created_at
+    `SELECT id, conversation_id, role, content, image_ids, created_at
      FROM workspace_chat_messages
      WHERE conversation_id = $1
      ORDER BY created_at ASC`,

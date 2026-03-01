@@ -235,6 +235,25 @@ export async function ensureChatTables(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_chat_msg_conversation
       ON workspace_chat_messages(conversation_id, created_at ASC);
+
+    ALTER TABLE workspace_chat_messages ADD COLUMN IF NOT EXISTS image_ids UUID[] DEFAULT '{}';
+  `);
+}
+
+export async function ensureChatImageTable(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS workspace_chat_images (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id  UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      filename      TEXT NOT NULL,
+      content_type  TEXT NOT NULL CHECK (content_type IN ('image/jpeg', 'image/png')),
+      size_bytes    INTEGER NOT NULL,
+      data          BYTEA NOT NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_chat_images_workspace
+      ON workspace_chat_images(workspace_id);
   `);
 }
 

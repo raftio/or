@@ -15,7 +15,7 @@ import { cors } from "hono/cors";
 import health from "./api/health.js";
 import v1 from "./api/v1/index.js";
 import auth from "./api/auth.js";
-import { ensureUsersTable, ensureWorkspaceTables, ensureIntegrationTables, ensureApiTokenTables, ensureBundleTables, ensureEvidenceTables, ensureChatTables, ensureMemoryTables, ensureEventTables, ensureVectorTables } from "./db/index.js";
+import { ensureUsersTable, ensureWorkspaceTables, ensureIntegrationTables, ensureApiTokenTables, ensureBundleTables, ensureEvidenceTables, ensureChatTables, ensureChatImageTable, ensureMemoryTables, ensureEventTables, ensureVectorTables } from "./db/index.js";
 
 const app = new Hono();
 
@@ -36,6 +36,7 @@ async function start() {
     await ensureBundleTables();
     await ensureEvidenceTables();
     await ensureChatTables();
+    await ensureChatImageTable();
     await ensureMemoryTables();
     await ensureEventTables();
   } catch (e) {

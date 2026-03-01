@@ -6,8 +6,30 @@ import { DefaultChatTransport } from "ai";
 import { useAuth } from "../../../components/auth-provider";
 import { useWorkspace } from "../../../components/workspace-provider";
 import { ChatMarkdown } from "../../../components/chat-markdown";
+import { ImageLightbox } from "../../../components/image-lightbox";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+interface PendingImage {
+  id: string;
+  url: string;
+  filename: string;
+  previewUrl: string;
+  uploading: boolean;
+}
+
+function validateImageFile(file: File): string | null {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return "Only JPEG and PNG images are allowed.";
+  }
+  if (file.size > MAX_IMAGE_SIZE) {
+    return `Image exceeds the 5 MB limit (${(file.size / 1024 / 1024).toFixed(1)} MB).`;
+  }
+  return null;
+}
 
 interface Conversation {
   id: string;
@@ -357,12 +379,37 @@ interface MessagePart {
   type: string;
   text?: string;
   toolInvocation?: ToolInvocation;
+  imageUrl?: string;
+  imageFilename?: string;
 }
 
-function MessageParts({ parts, isUser }: { parts: MessagePart[]; isUser: boolean }) {
+function MessageParts({
+  parts,
+  isUser,
+  onImageClick,
+}: {
+  parts: MessagePart[];
+  isUser: boolean;
+  onImageClick?: (imageUrl: string, allImages: { url: string; filename?: string }[]) => void;
+}) {
+  const imageUrls = parts
+    .filter((p) => p.type === "image" && p.imageUrl)
+    .map((p) => ({ url: p.imageUrl!, filename: p.imageFilename }));
+
   return (
     <>
       {parts.map((part, i) => {
+        if (part.type === "image" && part.imageUrl) {
+          return (
+            <img
+              key={i}
+              src={part.imageUrl}
+              alt={part.imageFilename ?? "Uploaded image"}
+              className="my-1 max-h-64 max-w-full cursor-pointer rounded-lg"
+              onClick={() => onImageClick?.(part.imageUrl!, imageUrls)}
+            />
+          );
+        }
         if (part.type === "text" && part.text) {
           return isUser ? (
             <div key={i} className="whitespace-pre-wrap">{part.text}</div>
@@ -404,8 +451,16 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
   const [showPanel, setShowPanel] = useState(false);
   const [showEvents, setShowEvents] = useState(true);
   const [inputValue, setInputValue] = useState("");
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ images: { url: string; filename?: string }[]; index: number } | null>(null);
+  const [lastSentImages, setLastSentImages] = useState<PendingImage[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingImageIdsRef = useRef<string[]>([]);
+  const imageIdsToSendRef = useRef<string[]>([]);
 
   const { events, streamStatus, streamError, dismissEvent, clearEvents, reconnect } =
     useWorkspaceEvents(workspaceId, token);
@@ -434,6 +489,8 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
             role: m.role,
             content: getTextFromParts(m.parts as { type: string; text?: string }[]),
           }));
+          const imageIds = imageIdsToSendRef.current.length > 0 ? [...imageIdsToSendRef.current] : undefined;
+          imageIdsToSendRef.current = [];
           return {
             api,
             headers,
@@ -442,6 +499,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
               ...body,
               messages: simplified,
               conversationId: conversationIdRef.current ?? undefined,
+              imageIds,
             },
           };
         },
@@ -495,6 +553,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
     async (convId: string) => {
       setActiveConversationId(convId);
       setShowPanel(false);
+      setLastSentImages([]);
       try {
         const res = await fetch(
           `${apiUrl}/v1/workspaces/${workspaceId}/chat/conversations/${convId}`,
@@ -503,11 +562,20 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
         if (res.ok) {
           const data = await res.json();
           const loaded = (data.messages ?? []).map(
-            (m: { id: string; role: string; content: string }) => ({
-              id: m.id,
-              role: m.role as "user" | "assistant",
-              parts: [{ type: "text" as const, text: m.content }],
-            }),
+            (m: { id: string; role: string; content: string; image_ids?: string[] }) => {
+              const parts: MessagePart[] = [];
+              if (m.image_ids?.length) {
+                for (const imgId of m.image_ids) {
+                  parts.push({
+                    type: "image" as const,
+                    imageUrl: `${apiUrl}/v1/workspaces/${workspaceId}/chat/images/${imgId}`,
+                    imageFilename: imgId,
+                  });
+                }
+              }
+              parts.push({ type: "text" as const, text: m.content });
+              return { id: m.id, role: m.role as "user" | "assistant", parts };
+            },
           );
           setMessages(loaded);
         }
@@ -522,6 +590,9 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
     setActiveConversationId(null);
     setMessages([]);
     setInputValue("");
+    setPendingImages([]);
+    setLastSentImages([]);
+    pendingImageIdsRef.current = [];
     setShowPanel(false);
   }, [setMessages]);
 
@@ -543,6 +614,65 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
     [workspaceId, startNewChat],
   );
 
+  const uploadImage = useCallback(
+    async (file: File) => {
+      setImageError(null);
+      const error = validateImageFile(file);
+      if (error) {
+        setImageError(error);
+        return;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      const tempId = crypto.randomUUID();
+      const pending: PendingImage = { id: tempId, url: "", filename: file.name, previewUrl, uploading: true };
+      setPendingImages((prev) => [...prev, pending]);
+
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch(
+          `${apiUrl}/v1/workspaces/${workspaceId}/chat/images`,
+          {
+            method: "POST",
+            headers: tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : undefined,
+            body: form,
+          },
+        );
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: "Upload failed" }));
+          throw new Error(err.error ?? "Upload failed");
+        }
+        const data = await res.json() as { id: string; url: string; filename: string };
+        setPendingImages((prev) =>
+          prev.map((p) => (p.id === tempId ? { ...p, id: data.id, url: `${apiUrl}${data.url}`, uploading: false } : p)),
+        );
+        pendingImageIdsRef.current = [...pendingImageIdsRef.current, data.id];
+      } catch (err) {
+        setPendingImages((prev) => prev.filter((p) => p.id !== tempId));
+        setImageError(err instanceof Error ? err.message : "Upload failed");
+        URL.revokeObjectURL(previewUrl);
+      }
+    },
+    [workspaceId],
+  );
+
+  const removeImage = useCallback((imageId: string) => {
+    setPendingImages((prev) => {
+      const img = prev.find((p) => p.id === imageId);
+      if (img) URL.revokeObjectURL(img.previewUrl);
+      return prev.filter((p) => p.id !== imageId);
+    });
+    pendingImageIdsRef.current = pendingImageIdsRef.current.filter((id) => id !== imageId);
+  }, []);
+
+  const handleFiles = useCallback(
+    (files: FileList | File[]) => {
+      Array.from(files).forEach((f) => uploadImage(f));
+    },
+    [uploadImage],
+  );
+
   const handleSend = useCallback(
     (text?: string) => {
       const msg = (text ?? inputValue).trim();
@@ -551,9 +681,23 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
+      // Snapshot image IDs so the transport can read them asynchronously
+      imageIdsToSendRef.current = [...pendingImageIdsRef.current];
+      const sentImages = [...pendingImages].filter((p) => !p.uploading);
       sendMessage({ text: msg });
+      setLastSentImages(sentImages);
+      setPendingImages([]);
+      pendingImageIdsRef.current = [];
     },
-    [inputValue, isLoading, sendMessage],
+    [inputValue, isLoading, sendMessage, pendingImages],
+  );
+
+  const openLightbox = useCallback(
+    (clickedUrl: string, allImages: { url: string; filename?: string }[]) => {
+      const index = allImages.findIndex((img) => img.url === clickedUrl);
+      setLightbox({ images: allImages, index: index >= 0 ? index : 0 });
+    },
+    [],
   );
 
   const activeTitle = conversations.find((c) => c.id === activeConversationId)?.title;
@@ -746,7 +890,18 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
           </div>
         ) : (
           <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
-            {messages.map((msg) => (
+            {messages.map((msg, msgIdx) => {
+              const isLastUserMsg = msg.role === "user" && lastSentImages.length > 0 &&
+                !messages.slice(msgIdx + 1).some((m) => m.role === "user");
+              const extraParts: MessagePart[] = isLastUserMsg
+                ? lastSentImages.map((img) => ({
+                    type: "image" as const,
+                    imageUrl: img.previewUrl || img.url,
+                    imageFilename: img.filename,
+                  }))
+                : [];
+              const allParts = [...extraParts, ...((msg.parts as MessagePart[]) ?? [])];
+              return (
               <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                 <div
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
@@ -765,12 +920,14 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
                   }`}
                 >
                   <MessageParts
-                    parts={msg.parts as MessagePart[]}
+                    parts={allParts}
                     isUser={msg.role === "user"}
+                    onImageClick={openLightbox}
                   />
                 </div>
               </div>
-            ))}
+              );
+            })}
             {isLoading && messages[messages.length - 1]?.role === "user" && (
               <div className="flex gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-xs font-semibold text-secondary">
@@ -791,38 +948,142 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
 
       {/* Input */}
       <div className="px-4 pb-4 pt-2">
-        <div className="mx-auto flex max-w-2xl items-end gap-2 rounded-xl border border-base-border bg-surface px-3 py-2 shadow-sm focus-within:border-primary">
-          <textarea
-            ref={textareaRef}
-            value={inputValue}
-            onChange={(e) => {
-              setInputValue(e.target.value);
-              autoResize();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="Ask Orca Assistant..."
-            rows={1}
-            className="flex-1 resize-none bg-transparent py-1 text-sm text-base-text placeholder:text-base-text-muted focus:outline-none"
-            style={{ maxHeight: "160px" }}
-          />
-          <button
-            type="button"
-            onClick={() => handleSend()}
-            disabled={isLoading || !inputValue.trim()}
-            className="mb-0.5 shrink-0 rounded-lg bg-primary p-1.5 transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </button>
+        <div
+          className={`mx-auto max-w-2xl rounded-xl border bg-surface shadow-sm transition-colors focus-within:border-primary ${
+            dragOver ? "border-primary bg-primary/5" : "border-base-border"
+          }`}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+          }}
+        >
+          {/* Image error */}
+          {imageError && (
+            <div className="flex items-center gap-2 px-3 pt-2 text-xs text-red-500">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>{imageError}</span>
+              <button type="button" onClick={() => setImageError(null)} className="ml-auto text-red-400 hover:text-red-600">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Pending image previews */}
+          {pendingImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-3 pt-2">
+              {pendingImages.map((img) => (
+                <div key={img.id} className="group relative">
+                  <img
+                    src={img.previewUrl}
+                    alt={img.filename}
+                    className={`h-16 w-16 rounded-lg object-cover ${img.uploading ? "opacity-50" : ""}`}
+                  />
+                  {img.uploading && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    </div>
+                  )}
+                  {!img.uploading && (
+                    <button
+                      type="button"
+                      onClick={() => removeImage(img.id)}
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Textarea + buttons */}
+          <div className="flex items-end gap-2 px-3 py-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) handleFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="mb-0.5 shrink-0 rounded-lg p-1.5 text-base-text-muted transition-colors hover:bg-primary/5 hover:text-primary"
+              title="Send image (JPEG, PNG, max 5 MB)"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </button>
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                autoResize();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              onPaste={(e) => {
+                const items = e.clipboardData.items;
+                for (const item of items) {
+                  if (item.type.startsWith("image/")) {
+                    const file = item.getAsFile();
+                    if (file) {
+                      e.preventDefault();
+                      uploadImage(file);
+                    }
+                  }
+                }
+              }}
+              placeholder="Ask Orca Assistant..."
+              rows={1}
+              className="flex-1 resize-none bg-transparent py-1 text-sm text-base-text placeholder:text-base-text-muted focus:outline-none"
+              style={{ maxHeight: "160px" }}
+            />
+            <button
+              type="button"
+              onClick={() => handleSend()}
+              disabled={isLoading || !inputValue.trim()}
+              className="mb-0.5 shrink-0 rounded-lg bg-primary p-1.5 transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Image lightbox */}
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 }

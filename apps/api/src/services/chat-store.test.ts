@@ -109,6 +109,7 @@ describe("addMessage", () => {
       conversation_id: "conv-1",
       role: "user",
       content: "Hello",
+      image_ids: [],
       created_at: "2026-01-01T00:00:00Z",
     };
     mockQuery
@@ -118,7 +119,26 @@ describe("addMessage", () => {
     const result = await chatStore.addMessage("conv-1", "user", "Hello");
     expect(result).toEqual(msgRow);
     expect(mockQuery).toHaveBeenCalledTimes(2);
+    expect(mockQuery.mock.calls[0][1]).toContain("conv-1");
     expect(mockQuery.mock.calls[1][0]).toContain("UPDATE workspace_chat_conversations");
+  });
+
+  it("stores image_ids when provided", async () => {
+    const msgRow = {
+      id: "msg-2",
+      conversation_id: "conv-1",
+      role: "user",
+      content: "Look at this",
+      image_ids: ["img-1", "img-2"],
+      created_at: "2026-01-01T00:00:00Z",
+    };
+    mockQuery
+      .mockResolvedValueOnce({ rows: [msgRow] })
+      .mockResolvedValueOnce({});
+
+    const result = await chatStore.addMessage("conv-1", "user", "Look at this", ["img-1", "img-2"]);
+    expect(result.image_ids).toEqual(["img-1", "img-2"]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(["conv-1", "user", "Look at this", ["img-1", "img-2"]]);
   });
 });
 

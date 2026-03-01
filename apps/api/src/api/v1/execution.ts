@@ -136,7 +136,8 @@ app.get("/workspaces/:workspaceId/bundles", async (c) => {
   const offset = Number(c.req.query("offset")) || 0;
   const rawStatus = c.req.query("status");
   const status = rawStatus ? BundleStatusSchema.parse(rawStatus) : undefined;
-  const result = await bundleStore.listBundles(workspaceId, { limit, offset, status });
+  const search = c.req.query("search")?.trim() || undefined;
+  const result = await bundleStore.listBundles(workspaceId, { limit, offset, status, search });
   return c.json(result);
 });
 

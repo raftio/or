@@ -247,32 +247,55 @@ export async function getLatestBundlesByTickets(
 
 export async function listBundles(
   workspaceId: string,
-  opts?: { limit?: number; offset?: number; status?: BundleStatus },
+  opts?: { limit?: number; offset?: number; status?: BundleStatus; search?: string },
 ): Promise<{ bundles: ExecutionBundle[]; total: number }> {
   const limit = opts?.limit ?? 50;
   const offset = opts?.offset ?? 0;
   const status = opts?.status;
+  const search = opts?.search;
 
-  const dataStatusFilter = status ? "AND status = $4" : "";
-  const countStatusFilter = status ? "AND status = $2" : "";
-  const params: unknown[] = [workspaceId, limit, offset];
-  if (status) params.push(status);
+  const dataFilters: string[] = [];
+  const countFilters: string[] = [];
+  const dataParams: unknown[] = [workspaceId, limit, offset];
+  const countParams: unknown[] = [workspaceId];
+
+  if (status) {
+    dataParams.push(status);
+    dataFilters.push(`status = $${dataParams.length}`);
+    countParams.push(status);
+    countFilters.push(`status = $${countParams.length}`);
+  }
+
+  if (search) {
+    const pattern = `%${search}%`;
+    dataParams.push(pattern);
+    dataFilters.push(
+      `(title ILIKE $${dataParams.length} OR ticket_ref ILIKE $${dataParams.length})`,
+    );
+    countParams.push(pattern);
+    countFilters.push(
+      `(title ILIKE $${countParams.length} OR ticket_ref ILIKE $${countParams.length})`,
+    );
+  }
+
+  const dataWhere = dataFilters.length ? `AND ${dataFilters.join(" AND ")}` : "";
+  const countWhere = countFilters.length ? `AND ${countFilters.join(" AND ")}` : "";
 
   const [dataResult, countResult] = await Promise.all([
     query<BundleRow>(
       `SELECT * FROM (
          SELECT DISTINCT ON (ticket_ref) *
          FROM workspace_bundles
-         WHERE workspace_id = $1 ${dataStatusFilter}
+         WHERE workspace_id = $1 ${dataWhere}
          ORDER BY ticket_ref, version DESC
        ) latest
        ORDER BY latest.created_at DESC
        LIMIT $2 OFFSET $3`,
-      params,
+      dataParams,
     ),
     query<{ count: string }>(
-      `SELECT COUNT(DISTINCT ticket_ref) AS count FROM workspace_bundles WHERE workspace_id = $1 ${countStatusFilter}`,
-      status ? [workspaceId, status] : [workspaceId],
+      `SELECT COUNT(DISTINCT ticket_ref) AS count FROM workspace_bundles WHERE workspace_id = $1 ${countWhere}`,
+      countParams,
     ),
   ]);
 

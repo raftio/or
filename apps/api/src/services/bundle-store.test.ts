@@ -75,6 +75,53 @@ describe("updateBundleStatus", () => {
   });
 });
 
+describe("updateAllBundleVersionsStatus", () => {
+  it("updates all versions and returns them", async () => {
+    const rows = [
+      makeBundleRow({ id: "b-1", version: 1, status: "completed" }),
+      makeBundleRow({ id: "b-2", version: 2, status: "completed" }),
+    ];
+    mockQuery.mockResolvedValueOnce({ rows, rowCount: 2 });
+
+    const result = await bundleStore.updateAllBundleVersionsStatus("ws-1", "PROJ-10", "completed");
+
+    expect(result).toHaveLength(2);
+    expect(result[0].status).toBe("completed");
+    expect(result[1].status).toBe("completed");
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE workspace_bundles"),
+      ["completed", "ws-1", "PROJ-10"],
+    );
+  });
+
+  it("returns empty array when no bundles match", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    const result = await bundleStore.updateAllBundleVersionsStatus("ws-1", "NOPE-1", "completed");
+
+    expect(result).toEqual([]);
+  });
+
+  it("targets ticket_ref in the SQL query", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    await bundleStore.updateAllBundleVersionsStatus("ws-1", "PROJ-10", "active");
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("ticket_ref");
+    expect(sql).not.toContain("WHERE id");
+  });
+
+  it("sets updated_at to now()", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    await bundleStore.updateAllBundleVersionsStatus("ws-1", "PROJ-10", "completed");
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("updated_at = now()");
+  });
+});
+
 describe("getBundle", () => {
   it("returns a bundle with status field", async () => {
     const row = makeBundleRow({ id: "bundle-get-1" });

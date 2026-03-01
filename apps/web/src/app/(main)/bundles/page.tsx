@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { useAuth } from "@/components/auth-provider";
-import { CreateTicketDrawer } from "./_components/create-ticket-drawer";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -45,7 +44,6 @@ export default function BundlesPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [showCreateTicket, setShowCreateTicket] = useState(false);
 
   const fetchBundles = useCallback(async () => {
     if (!activeWorkspace || !token) return;
@@ -91,22 +89,7 @@ export default function BundlesPage() {
             Execution bundles for <strong>{activeWorkspace.name}</strong>.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowCreateTicket(true)}
-          className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-base transition-colors hover:bg-primary-hover"
-        >
-          Create Issue
-        </button>
       </div>
-
-      <CreateTicketDrawer
-        open={showCreateTicket}
-        onClose={() => setShowCreateTicket(false)}
-        workspaceId={activeWorkspace.id}
-        token={token!}
-        onCreated={fetchBundles}
-      />
 
       {/* Search / filter */}
       <div className="mt-6">

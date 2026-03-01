@@ -245,6 +245,24 @@ export async function ensureMemoryTables(): Promise<void> {
   `);
 }
 
+export async function ensureEventTables(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS workspace_events (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      workspace_id  UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      type          TEXT NOT NULL,
+      title         TEXT NOT NULL,
+      detail        JSONB NOT NULL DEFAULT '{}',
+      actor_id      UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_events_workspace_created
+      ON workspace_events(workspace_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_events_workspace_type
+      ON workspace_events(workspace_id, type);
+  `);
+}
+
 export async function ensureVectorTables(): Promise<void> {
   await vectorQuery(`CREATE EXTENSION IF NOT EXISTS vector`);
 

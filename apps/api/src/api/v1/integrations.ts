@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { query } from "../../db/index.js";
+import { query, vectorQuery } from "../../db/index.js";
 import { authMiddleware } from "../../middleware/auth.js";
 import { requireWorkspaceAdmin, requireWorkspaceMember } from "../../middleware/workspace-auth.js";
 import { testJiraConnection } from "../../adapters/ticket/jira.js";
@@ -502,7 +502,7 @@ app.get("/workspaces/:id/integrations/github-code/status", async (c) => {
   const check = await requireWorkspaceMember(workspaceId, userId);
   if (!check.ok) return c.json({ error: check.error }, check.status);
 
-  const result = await query<{
+  const result = await vectorQuery<{
     repo: string;
     status: string;
     total_files: number;

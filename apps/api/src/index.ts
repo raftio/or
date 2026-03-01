@@ -15,11 +15,11 @@ import { cors } from "hono/cors";
 import health from "./api/health.js";
 import v1 from "./api/v1/index.js";
 import auth from "./api/auth.js";
-import { ensureUsersTable, ensureWorkspaceTables, ensureIntegrationTables, ensureApiTokenTables, ensureBundleTables, ensureEvidenceTables, ensureChatTables, ensureMemoryTables, ensureVectorTables } from "./db/index.js";
+import { ensureUsersTable, ensureWorkspaceTables, ensureIntegrationTables, ensureApiTokenTables, ensureBundleTables, ensureEvidenceTables, ensureChatTables, ensureMemoryTables, ensureEventTables, ensureVectorTables } from "./db/index.js";
 
 const app = new Hono();
 
-app.use("*", cors({ origin: "*", credentials: true }));
+app.use("*", cors({ origin: "*", credentials: true, exposeHeaders: ["X-Conversation-Id"] }));
 
 app.route("/", health);
 app.route("/auth", auth);
@@ -37,6 +37,7 @@ async function start() {
     await ensureEvidenceTables();
     await ensureChatTables();
     await ensureMemoryTables();
+    await ensureEventTables();
   } catch (e) {
     console.error("Failed to ensure database tables (is DATABASE_URL set?):", e);
     process.exit(1);

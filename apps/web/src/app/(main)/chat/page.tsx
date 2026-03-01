@@ -14,12 +14,142 @@ interface Conversation {
   updated_at: string;
 }
 
+interface WorkspaceEvent {
+  id: string;
+  workspace_id: string;
+  type: string;
+  title: string;
+  detail: Record<string, unknown>;
+  actor_id: string | null;
+  created_at: string;
+}
+
+type EventStreamStatus = "connecting" | "connected" | "disconnected" | "error";
+
 function getTextFromParts(parts?: { type: string; text?: string }[]): string {
   if (!parts) return "";
   return parts
     .filter((p): p is { type: "text"; text: string } => p.type === "text" && !!p.text)
     .map((p) => p.text)
     .join("");
+}
+
+// ── SSE hook for workspace events ─────────────────────────────────────────
+
+function useWorkspaceEvents(workspaceId: string | undefined, token: string | null) {
+  const [events, setEvents] = useState<WorkspaceEvent[]>([]);
+  const [streamStatus, setStreamStatus] = useState<EventStreamStatus>("disconnected");
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectAttemptRef = useRef(0);
+  const MAX_EVENTS = 100;
+  const MAX_RECONNECT_DELAY = 30_000;
+
+  const connect = useCallback(() => {
+    if (!workspaceId || !token) return;
+    eventSourceRef.current?.close();
+    setStreamStatus("connecting");
+    setStreamError(null);
+
+    const url = `${apiUrl}/v1/workspaces/${workspaceId}/events/stream`;
+    const es = new EventSource(url, { withCredentials: false });
+
+    // EventSource doesn't support custom headers natively, so we use a
+    // fetch-based polyfill pattern: override with a custom ReadableStream reader
+    es.close();
+
+    const abortController = new AbortController();
+    eventSourceRef.current = null;
+
+    (async () => {
+      try {
+        const res = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          signal: abortController.signal,
+        });
+
+        if (!res.ok) {
+          setStreamStatus("error");
+          setStreamError(`Event stream returned ${res.status}`);
+          scheduleReconnect();
+          return;
+        }
+
+        setStreamStatus("connected");
+        reconnectAttemptRef.current = 0;
+
+        const reader = res.body?.getReader();
+        if (!reader) return;
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          let currentEventType = "";
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              currentEventType = line.slice(7).trim();
+            } else if (line.startsWith("data: ")) {
+              const data = line.slice(6);
+              if (currentEventType === "workspace_event" && data) {
+                try {
+                  const parsed = JSON.parse(data) as WorkspaceEvent;
+                  setEvents((prev) => {
+                    const next = [parsed, ...prev];
+                    return next.length > MAX_EVENTS ? next.slice(0, MAX_EVENTS) : next;
+                  });
+                } catch { /* malformed JSON */ }
+              }
+              currentEventType = "";
+            } else if (line === "") {
+              currentEventType = "";
+            }
+          }
+        }
+
+        setStreamStatus("disconnected");
+        scheduleReconnect();
+      } catch (err) {
+        if (abortController.signal.aborted) return;
+        setStreamStatus("error");
+        setStreamError(err instanceof Error ? err.message : "Connection failed");
+        scheduleReconnect();
+      }
+    })();
+
+    eventSourceRef.current = { close: () => abortController.abort() } as unknown as EventSource;
+  }, [workspaceId, token]);
+
+  function scheduleReconnect() {
+    const attempt = reconnectAttemptRef.current++;
+    const delay = Math.min(1000 * 2 ** attempt, MAX_RECONNECT_DELAY);
+    reconnectTimerRef.current = setTimeout(() => connect(), delay);
+  }
+
+  useEffect(() => {
+    connect();
+    return () => {
+      eventSourceRef.current?.close();
+      clearTimeout(reconnectTimerRef.current);
+      setStreamStatus("disconnected");
+    };
+  }, [connect]);
+
+  const dismissEvent = useCallback((eventId: string) => {
+    setEvents((prev) => prev.filter((e) => e.id !== eventId));
+  }, []);
+
+  const clearEvents = useCallback(() => setEvents([]), []);
+
+  return { events, streamStatus, streamError, dismissEvent, clearEvents, reconnect: connect };
 }
 
 const suggestions = [
@@ -108,13 +238,17 @@ function renderInline(text: string): React.ReactNode[] {
 // ── Tool result rendering ─────────────────────────────────────────────────
 
 const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
-  listBundles:      { label: "Bundles",        icon: "M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" },
-  getBundle:        { label: "Bundle Details",  icon: "M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" },
-  createBundle:     { label: "Bundle Created",  icon: "M12 5v14M5 12h14" },
-  listEvidence:     { label: "Evidence",        icon: "M9 11l3 3L22 4" },
-  getEvidenceStatus:{ label: "Evidence Status", icon: "M9 11l3 3L22 4" },
-  saveMemory:       { label: "Noted",           icon: "M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" },
-  recallMemories:   { label: "Memories",        icon: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" },
+  listBundles:      { label: "Bundles",         icon: "M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" },
+  getBundle:        { label: "Bundle Details",   icon: "M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" },
+  createBundle:     { label: "Bundle Created",   icon: "M12 5v14M5 12h14" },
+  listEvidence:     { label: "Evidence",         icon: "M9 11l3 3L22 4" },
+  getEvidenceStatus:{ label: "Evidence Status",  icon: "M9 11l3 3L22 4" },
+  saveMemory:       { label: "Noted",            icon: "M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" },
+  recallMemories:   { label: "Memories",         icon: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" },
+  getTicket:        { label: "Ticket Details",   icon: "M15 5v2m0 4v2m0 4v2M5 5a2 2 0 0 0-2 2v3a2 2 0 1 1 0 4v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3a2 2 0 1 1 0-4V7a2 2 0 0 0-2-2H5Z" },
+  listTickets:      { label: "Tickets",          icon: "M15 5v2m0 4v2m0 4v2M5 5a2 2 0 0 0-2 2v3a2 2 0 1 1 0 4v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3a2 2 0 1 1 0-4V7a2 2 0 0 0-2-2H5Z" },
+  createTicket:     { label: "Ticket Created",   icon: "M15 5v2m0 4v2m0 4v2M5 5a2 2 0 0 0-2 2v3a2 2 0 1 1 0 4v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3a2 2 0 1 1 0-4V7a2 2 0 0 0-2-2H5Z" },
+  searchCode:       { label: "Code Search",      icon: "M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0m4 4l6 6" },
 };
 
 interface ToolInvocation {
@@ -216,6 +350,83 @@ function ToolResultCard({ invocation }: { invocation: ToolInvocation }) {
   );
 }
 
+// ── Event display components ──────────────────────────────────────────────
+
+const EVENT_ICONS: Record<string, { icon: string; color: string }> = {
+  "bundle.created":            { icon: "M12 5v14M5 12h14",            color: "text-green-500" },
+  "bundle.updated":            { icon: "M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z", color: "text-blue-500" },
+  "bundle.synced":             { icon: "M23 4v6h-6M1 20v-6h6",        color: "text-indigo-500" },
+  "evidence.submitted":        { icon: "M9 11l3 3L22 4",              color: "text-amber-500" },
+  "evidence.validated":        { icon: "M22 11.08V12a10 10 0 1 1-5.93-9.14", color: "text-green-500" },
+  "task.started":              { icon: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", color: "text-blue-500" },
+  "task.completed":            { icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11", color: "text-green-500" },
+  "integration.connected":     { icon: "M15 7h3a5 5 0 0 1 0 10h-3m-6 0H6A5 5 0 0 1 6 7h3", color: "text-purple-500" },
+  "integration.disconnected":  { icon: "M15 7h3a5 5 0 0 1 0 10h-3m-6 0H6A5 5 0 0 1 6 7h3", color: "text-red-400" },
+};
+
+function EventCard({ event, onDismiss }: { event: WorkspaceEvent; onDismiss: () => void }) {
+  const meta = EVENT_ICONS[event.type] ?? { icon: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", color: "text-base-text-muted" };
+  const time = new Date(event.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <div className="group flex items-start gap-2.5 rounded-lg border border-base-border bg-surface/80 px-3 py-2 text-xs animate-in slide-in-from-top-1 fade-in duration-200">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`mt-0.5 shrink-0 ${meta.color}`}>
+        <path d={meta.icon} />
+      </svg>
+      <div className="min-w-0 flex-1">
+        <div className="font-medium text-base-text">{event.title}</div>
+        {Object.keys(event.detail).length > 0 && (
+          <div className="mt-0.5 text-base-text-muted">
+            {"ticketRef" in event.detail && <span className="font-mono">{String(event.detail.ticketRef)}</span>}
+            {"repo" in event.detail && <span className="font-mono"> {String(event.detail.repo)}</span>}
+          </div>
+        )}
+      </div>
+      <span className="shrink-0 text-[10px] text-base-text-muted">{time}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="shrink-0 rounded p-0.5 text-base-text-muted opacity-0 transition-opacity hover:text-base-text group-hover:opacity-100"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+function EventStreamIndicator({ status, error, onReconnect }: { status: EventStreamStatus; error: string | null; onReconnect: () => void }) {
+  if (status === "connected") return null;
+
+  const config: Record<Exclude<EventStreamStatus, "connected">, { label: string; className: string; showRetry: boolean }> = {
+    connecting:    { label: "Connecting to event stream...", className: "text-amber-500", showRetry: false },
+    disconnected:  { label: "Event stream disconnected",    className: "text-base-text-muted", showRetry: true },
+    error:         { label: error ?? "Event stream error",  className: "text-red-400", showRetry: true },
+  };
+
+  const { label, className, showRetry } = config[status];
+
+  return (
+    <div className={`flex items-center gap-2 px-4 py-1.5 text-xs ${className}`}>
+      {status === "connecting" && (
+        <div className="h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent" />
+      )}
+      {status === "error" && (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      )}
+      <span>{label}</span>
+      {showRetry && (
+        <button type="button" onClick={onReconnect} className="underline hover:no-underline">
+          Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Message part renderer ─────────────────────────────────────────────────
 
 interface MessagePart {
@@ -267,9 +478,13 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarLoading, setSidebarLoading] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
+  const [showEvents, setShowEvents] = useState(true);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const { events, streamStatus, streamError, dismissEvent, clearEvents, reconnect } =
+    useWorkspaceEvents(workspaceId, token);
 
   const tokenRef = useRef(token);
   tokenRef.current = token;
@@ -281,6 +496,15 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
       new DefaultChatTransport({
         api: `${apiUrl}/v1/workspaces/${workspaceId}/chat`,
         headers: () => tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : ({} as Record<string, string>),
+        fetch: async (url, init) => {
+          const res = await globalThis.fetch(url, init);
+          const convIdHeader = res.headers.get("X-Conversation-Id");
+          if (convIdHeader && !conversationIdRef.current) {
+            conversationIdRef.current = convIdHeader;
+            setActiveConversationId(convIdHeader);
+          }
+          return res;
+        },
         prepareSendMessagesRequest({ messages, body, headers, api, credentials }) {
           const simplified = messages.map((m) => ({
             role: m.role,
@@ -433,16 +657,42 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
           {activeTitle ?? "New conversation"}
         </span>
 
-        <button
-          type="button"
-          onClick={startNewChat}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          New Chat
-        </button>
+        <div className="flex items-center gap-2">
+          {events.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowEvents((p) => !p)}
+              className="relative flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-base-text-muted transition-colors hover:bg-primary/5 hover:text-base-text"
+              title="Toggle event feed"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
+                {events.length}
+              </span>
+            </button>
+          )}
+
+          {streamStatus !== "connected" && streamStatus !== "disconnected" && (
+            <div className={`h-2 w-2 rounded-full ${streamStatus === "connecting" ? "animate-pulse bg-amber-400" : "bg-red-400"}`}
+              title={streamStatus === "connecting" ? "Connecting..." : streamError ?? "Error"} />
+          )}
+          {streamStatus === "connected" && (
+            <div className="h-2 w-2 rounded-full bg-green-400" title="Live" />
+          )}
+
+          <button
+            type="button"
+            onClick={startNewChat}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Chat
+          </button>
+        </div>
       </div>
 
       {/* Conversation panel (slide-over) */}
@@ -503,6 +753,39 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
             </div>
           </div>
         </>
+      )}
+
+      {/* Event stream status */}
+      <EventStreamIndicator status={streamStatus} error={streamError} onReconnect={reconnect} />
+
+      {/* Live events feed */}
+      {showEvents && events.length > 0 && (
+        <div className="shrink-0 border-b border-base-border bg-surface/50">
+          <div className="mx-auto max-w-2xl px-4 py-2">
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-base-text-muted">
+                Live Events
+              </span>
+              <button
+                type="button"
+                onClick={clearEvents}
+                className="text-[10px] text-base-text-muted hover:text-base-text"
+              >
+                Clear all
+              </button>
+            </div>
+            <div className="space-y-1.5" style={{ maxHeight: "160px", overflowY: "auto" }}>
+              {events.slice(0, 10).map((event) => (
+                <EventCard key={event.id} event={event} onDismiss={() => dismissEvent(event.id)} />
+              ))}
+              {events.length > 10 && (
+                <div className="text-center text-[10px] text-base-text-muted">
+                  +{events.length - 10} more events
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Messages */}
@@ -570,10 +853,9 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
                   O
                 </div>
                 <div className="rounded-2xl border border-base-border bg-surface px-4 py-3">
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
-                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
-                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+                  <div className="flex items-center gap-2 text-xs text-base-text-muted">
+                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-base-border border-t-primary" />
+                    <span>{status === "submitted" ? "Thinking..." : "Responding..."}</span>
                   </div>
                 </div>
               </div>

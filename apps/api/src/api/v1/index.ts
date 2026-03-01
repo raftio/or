@@ -10,6 +10,7 @@ import apiTokens from "./api-tokens.js";
 import chat from "./chat.js";
 import tickets from "./tickets.js";
 import codeIndex from "./code-index.js";
+import events from "./events.js";
 
 const v1 = new Hono().basePath("/v1");
 
@@ -24,5 +25,6 @@ v1.route("/", apiTokens);
 v1.route("/", chat);
 v1.route("/", tickets);
 v1.route("/", codeIndex);
+v1.route("/", events);
 
 export default v1;

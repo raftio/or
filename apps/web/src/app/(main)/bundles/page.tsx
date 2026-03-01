@@ -82,11 +82,13 @@ export default function BundlesPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-base-text">Bundles</h1>
-        <p className="mt-1 text-sm text-base-text-muted">
-          Execution bundles for <strong>{activeWorkspace.name}</strong>.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-base-text">Bundles</h1>
+          <p className="mt-1 text-sm text-base-text-muted">
+            Execution bundles for <strong>{activeWorkspace.name}</strong>.
+          </p>
+        </div>
       </div>
 
       {/* Search / filter */}

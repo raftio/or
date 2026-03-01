@@ -174,6 +174,11 @@ export function GitHubIssuesForm({
         onChange={setAccessToken}
         disabled={!isAdmin}
       />
+      <p className="text-xs text-base-text-muted">
+        To create issues from Orca the token needs write access to Issues.
+        Classic PAT: <code className="text-base-text">repo</code> scope.
+        Fine-grained: read & write <code className="text-base-text">Issues</code> permission.
+      </p>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 

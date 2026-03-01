@@ -22,3 +22,9 @@ export interface ListTicketsQuery {
   filter?: string;
   query?: string;
 }
+
+export interface CreateTicketInput {
+  title: string;
+  description?: string;
+  labels?: string[];
+}

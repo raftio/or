@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useAuth } from "../../../components/auth-provider";
 import { useWorkspace } from "../../../components/workspace-provider";
+import { ChatMarkdown } from "../../../components/chat-markdown";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -157,83 +158,6 @@ const suggestions = [
   { label: "Show me recent tasks", icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" },
   { label: "Help me create a bundle", icon: "M12 5v14M5 12h14" },
 ];
-
-// ── Markdown renderer ─────────────────────────────────────────────────────
-
-function SimpleMarkdown({ content }: { content: string }) {
-  const lines = content.split("\n");
-  const elements: React.ReactNode[] = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    if (line.startsWith("```")) {
-      const lang = line.slice(3).trim();
-      const codeLines: string[] = [];
-      i++;
-      while (i < lines.length && !lines[i].startsWith("```")) {
-        codeLines.push(lines[i]);
-        i++;
-      }
-      i++;
-      elements.push(
-        <pre key={elements.length} className="my-2 overflow-x-auto rounded-lg bg-base p-3 text-xs leading-relaxed">
-          {lang && <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-base-text-muted">{lang}</div>}
-          <code>{codeLines.join("\n")}</code>
-        </pre>,
-      );
-      continue;
-    }
-
-    if (line.trim() === "") {
-      elements.push(<div key={elements.length} className="h-2" />);
-      i++;
-      continue;
-    }
-
-    elements.push(
-      <p key={elements.length} className="leading-relaxed">
-        {renderInline(line)}
-      </p>,
-    );
-    i++;
-  }
-
-  return <>{elements}</>;
-}
-
-function renderInline(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  const regex = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    const token = match[0];
-    if (token.startsWith("`")) {
-      parts.push(
-        <code key={parts.length} className="rounded bg-base px-1.5 py-0.5 text-xs font-mono text-primary">
-          {token.slice(1, -1)}
-        </code>,
-      );
-    } else if (token.startsWith("**")) {
-      parts.push(<strong key={parts.length}>{token.slice(2, -2)}</strong>);
-    } else if (token.startsWith("*")) {
-      parts.push(<em key={parts.length}>{token.slice(1, -1)}</em>);
-    }
-    lastIndex = match.index + token.length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return parts;
-}
 
 // ── Tool result rendering ─────────────────────────────────────────────────
 
@@ -443,7 +367,7 @@ function MessageParts({ parts, isUser }: { parts: MessagePart[]; isUser: boolean
           return isUser ? (
             <div key={i} className="whitespace-pre-wrap">{part.text}</div>
           ) : (
-            <SimpleMarkdown key={i} content={part.text} />
+            <ChatMarkdown key={i} content={part.text} />
           );
         }
         if (part.type === "tool-invocation" && part.toolInvocation) {
@@ -837,7 +761,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
                   className={`min-w-0 max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
                     msg.role === "user"
                       ? "bg-primary text-base"
-                      : "border border-base-border bg-surface text-base-text"
+                      : "bg-surface text-base-text"
                   }`}
                 >
                   <MessageParts
@@ -852,7 +776,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-xs font-semibold text-secondary">
                   O
                 </div>
-                <div className="rounded-2xl border border-base-border bg-surface px-4 py-3">
+                <div className="rounded-2xl bg-surface px-4 py-3">
                   <div className="flex items-center gap-2 text-xs text-base-text-muted">
                     <div className="h-3 w-3 animate-spin rounded-full border-2 border-base-border border-t-primary" />
                     <span>{status === "submitted" ? "Thinking..." : "Responding..."}</span>

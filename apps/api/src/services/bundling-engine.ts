@@ -6,12 +6,24 @@ import * as bundleStore from "./bundle-store.js";
 import { synthesizeContext } from "./context-synthesis.js";
 import { createBundleDecomposerForWorkspace, createBundleDecomposer } from "../adapters/ai-decomposer/index.js";
 import type { ExecutionBundle } from "@orca/domain";
+import type { EmbeddingProvider, VectorStore } from "./vector/contract.js";
+import { vectorQuery as dbQuery } from "../db/index.js";
+
+export interface CodeSearchResult {
+  file: string;
+  lines: string;
+  language: string | null;
+  score: number;
+  code: string;
+}
 
 export interface BundlingEngineInput {
   workspace_id: string;
   ticket_id: string;
   spec_ref?: string;
   use_ai?: boolean;
+  embeddingProvider?: EmbeddingProvider;
+  vectorStore?: VectorStore;
 }
 
 export function contentHash(bundle: {
@@ -25,6 +37,44 @@ export function contentHash(bundle: {
     spec_ref: bundle.spec_ref,
   });
   return createHash("sha256").update(payload).digest("hex");
+}
+
+/**
+ * Search the indexed codebase for code related to the ticket.
+ * Returns empty array if no code index is available for the workspace.
+ */
+export async function searchCode(
+  workspaceId: string,
+  query: string,
+  embeddingProvider: EmbeddingProvider,
+  vectorStore: VectorStore,
+  limit = 10,
+): Promise<CodeSearchResult[]> {
+  const repoResult = await dbQuery<{ repo: string }>(
+    `SELECT repo FROM workspace_code_index_status
+     WHERE workspace_id = $1 AND status = 'ready'
+     LIMIT 1`,
+    [workspaceId],
+  );
+
+  if (repoResult.rows.length === 0) return [];
+
+  const repo = repoResult.rows[0]!.repo;
+  const [embedding] = await embeddingProvider.embed([query]);
+
+  const results = await vectorStore.search(embedding!, {
+    workspaceId,
+    repo,
+    limit,
+  });
+
+  return results.map((r) => ({
+    file: r.filePath,
+    lines: `${r.startLine}-${r.endLine}`,
+    language: r.language,
+    score: Math.round(r.score * 100) / 100,
+    code: r.content,
+  }));
 }
 
 /**
@@ -88,6 +138,19 @@ export async function buildBundle(
   const meta: Record<string, unknown> = {};
   if (result.reasoning) meta.ai_reasoning = result.reasoning;
   if (result.suggested_ac?.length) meta.suggested_ac = result.suggested_ac;
+
+  if (input.embeddingProvider && input.vectorStore) {
+    const searchQuery = `${context.ticket_title} ${context.ticket_description}`;
+    const codeResults = await searchCode(
+      input.workspace_id,
+      searchQuery,
+      input.embeddingProvider,
+      input.vectorStore,
+    );
+    if (codeResults.length > 0) {
+      meta.code_search_results = codeResults;
+    }
+  }
 
   const bundle: ExecutionBundle = {
     id,

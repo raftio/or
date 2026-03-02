@@ -675,7 +675,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
     [uploadImage],
   );
 
-  const handleSend = useCallback(
+    const handleSend = useCallback(
     (text?: string) => {
       const msg = (text ?? inputValue).trim();
       if (!msg || isLoading) return;
@@ -720,27 +720,26 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
         <span className="max-w-[220px] truncate text-[13px] font-medium text-base-text">
           {activeTitle ?? "New conversation"}
         </span>
-        {streamStatus === "connected" && (
-          <div className="h-2 w-2 rounded-full bg-green-400" title="Live" />
-        )}
         {streamStatus !== "connected" && streamStatus !== "disconnected" && (
           <div className={`h-2 w-2 rounded-full ${streamStatus === "connecting" ? "animate-pulse bg-amber-400" : "bg-red-400"}`}
             title={streamStatus === "connecting" ? "Connecting..." : streamError ?? "Error"} />
         )}
-        <button
-          type="button"
-          onClick={startNewChat}
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/5"
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          New Chat
-        </button>
+        {activeConversationId && (
+          <button
+            type="button"
+            onClick={startNewChat}
+            className="rounded-lg p-1.5 text-base-text-muted transition-colors hover:bg-primary/5 hover:text-base-text"
+            title="New Chat"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+          </button>
+        )}
       </div>,
     );
     return () => setNavbarSlot(null);
-  }, [activeTitle, streamStatus, streamError, startNewChat, setNavbarSlot, setShowPanel]);
+  }, [activeConversationId, activeTitle, streamStatus, streamError, startNewChat, setNavbarSlot, setShowPanel]);
 
   return (
     <div className="relative flex h-full flex-col">

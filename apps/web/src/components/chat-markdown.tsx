@@ -87,7 +87,7 @@ const components: Components = {
           <span
             className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] ${
               isChecked
-                ? "bg-primary text-white"
+                ? "bg-primary text-base"
                 : "bg-surface-alt"
             }`}
           >
@@ -103,7 +103,7 @@ const components: Components = {
   },
 
   pre: ({ children }) => (
-    <pre className="my-2.5 overflow-x-auto rounded-lg bg-[#0d1117] p-3 text-xs leading-relaxed first:mt-0 last:mb-0">
+    <pre className="my-2.5 overflow-x-auto rounded-lg bg-surface dark:bg-[#1a1a1a] p-3 text-xs leading-relaxed first:mt-0 last:mb-0">
       {children}
     </pre>
   ),

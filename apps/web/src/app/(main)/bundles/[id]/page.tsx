@@ -404,7 +404,7 @@ export default function BundleDetailPage() {
                 href={`/bundles/${h.id}`}
                 className={`rounded-full px-3 py-1 text-xs font-medium no-underline transition-colors ${
                   h.id === bundle.id
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-base"
                     : "bg-primary/10 text-primary hover:bg-primary/20"
                 }`}
               >

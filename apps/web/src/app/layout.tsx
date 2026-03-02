@@ -23,10 +23,6 @@ const themeScript = `
   } else {
     document.documentElement.classList.remove('dark');
   }
-  var accent = localStorage.getItem('orca_accent');
-  if (accent && accent !== 'cyan') {
-    document.documentElement.setAttribute('data-accent', accent);
-  }
 })();
 `;
 

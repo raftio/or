@@ -18,16 +18,16 @@
 }
 
 .dark {
-  --color-bg: #212121;
-  --color-surface: #2F2F2F;
-  --color-surface-alt: rgba(47, 47, 47, 0.8);
+  --color-bg: #1A1A1A;
+  --color-surface: #2A2A2A;
+  --color-surface-alt: rgba(42, 42, 42, 0.8);
   --color-primary: #FFFFFF;
   --color-primary-hover: #D1D1D6;
-  --color-secondary: #8E8EA0;
-  --color-glow: #444654;
-  --color-text: #ECECEC;
-  --color-text-muted: #8E8EA0;
-  --color-border: #444654;
+  --color-secondary: #A0A0B4;
+  --color-glow: #4A4A5A;
+  --color-text: #EFEFEF;
+  --color-text-muted: #A0A0B4;
+  --color-border: #3D3D4E;
 }
 
 @layer base {

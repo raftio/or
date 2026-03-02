@@ -44,7 +44,7 @@ const mainItems = [
 
 const workspaceItems = [
   {
-    label: "Settings",
+    label: "Workspace",
     href: "/settings/workspace",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -118,7 +118,7 @@ export function Sidebar() {
 
         <div className="mt-5">
           <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-base-text-muted">
-            Workspace
+            Settings
           </p>
           <ul className="flex flex-col gap-0.5">
             {workspaceItems.map(({ label, href, icon }) => {

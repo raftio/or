@@ -17,7 +17,7 @@ const routeLabels: Record<string, string> = {
 };
 
 const settingsPageLabels: Record<string, string> = {
-  workspace: "Settings",
+  workspace: "Workspace",
   members: "Members",
   "api-tokens": "API Tokens",
   appearance: "Appearance",
@@ -55,7 +55,7 @@ function buildCrumbs(pathname: string): Crumb[] {
     const page = segments[1];
     const label = settingsPageLabels[page] ?? page;
     return [
-      { href: "/settings/workspace", label: "Workspace", isLast: false },
+      { href: "/settings/workspace", label: "Settings", isLast: false },
       { href: pathname, label, isLast: true },
     ];
   }
@@ -78,7 +78,7 @@ function Breadcrumb() {
   return (
     <div className="flex items-center gap-1.5 text-[13px]">
       {crumbs.map((crumb, i) => (
-        <div key={crumb.href} className="flex items-center gap-1.5">
+        <div key={`${crumb.href}-${i}`} className="flex items-center gap-1.5">
           {i > 0 && <ChevronSeparator />}
           {crumb.isLast ? (
             <span className="max-w-[160px] truncate font-medium text-base-text">
@@ -280,13 +280,6 @@ export function Navbar() {
             href="/"
             className="flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight text-base-text no-underline hover:no-underline"
           >
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                <path d="M2 12h20" />
-              </svg>
-            </div>
             Orca
           </Link>
 

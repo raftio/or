@@ -1,10 +1,67 @@
 "use client";
 
-import { memo, type ComponentPropsWithoutRef } from "react";
+import { memo, useCallback, useRef, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.min.css";
+
+function extractLang(children: ReactNode): string {
+  if (!children || typeof children !== "object") return "";
+  const child = Array.isArray(children) ? children[0] : children;
+  if (child && typeof child === "object" && "props" in child) {
+    const cls: string = child.props?.className ?? "";
+    const match = cls.match(/language-(\S+)/);
+    if (match) return match[1];
+  }
+  return "";
+}
+
+function CodeBlock({ children }: { children: ReactNode }) {
+  const preRef = useRef<HTMLPreElement>(null);
+  const [copied, setCopied] = useState(false);
+  const lang = extractLang(children);
+
+  const handleCopy = useCallback(() => {
+    const text = preRef.current?.textContent ?? "";
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, []);
+
+  return (
+    <div className="group/code relative my-2.5 overflow-hidden rounded-lg border border-base-border first:mt-0 last:mb-0">
+      <div className="flex items-center justify-between bg-surface-alt px-3 py-1.5">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-base-text-muted">{lang || "code"}</span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1 text-[11px] text-base-text-muted transition-colors hover:text-base-text"
+        >
+          {copied ? (
+            <>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Copied
+            </>
+          ) : (
+            <>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              Copy
+            </>
+          )}
+        </button>
+      </div>
+      <pre ref={preRef} className="overflow-x-auto bg-surface dark:bg-[#1a1a1a] p-3 text-xs leading-relaxed">
+        {children}
+      </pre>
+    </div>
+  );
+}
 
 const components: Components = {
   h1: ({ children }) => (
@@ -102,26 +159,14 @@ const components: Components = {
     return <li className="leading-relaxed">{children}</li>;
   },
 
-  pre: ({ children }) => (
-    <pre className="my-2.5 overflow-x-auto rounded-lg bg-surface dark:bg-[#1a1a1a] p-3 text-xs leading-relaxed first:mt-0 last:mb-0">
-      {children}
-    </pre>
-  ),
+  pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
   code: ({ children, className, ...rest }) => {
     const isBlock = className?.includes("language-") || className?.includes("hljs");
     if (isBlock) {
-      const lang = className?.replace(/language-|hljs\s*/g, "").trim() ?? "";
       return (
-        <>
-          {lang && (
-            <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-base-text-muted">
-              {lang}
-            </div>
-          )}
-          <code className={className} {...rest}>
-            {children}
-          </code>
-        </>
+        <code className={className} {...rest}>
+          {children}
+        </code>
       );
     }
     return (

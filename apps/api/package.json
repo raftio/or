@@ -17,8 +17,8 @@
     "@ai-sdk/openai": "^3.0.36",
     "@hono/node-server": "^1.13.0",
     "@or/agent": "workspace:*",
+    "@or/code-chunker": "workspace:*",
     "@or/domain": "workspace:*",
-    "@typescript-eslint/typescript-estree": "^8.56.1",
     "ai": "^6.0.104",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
@@ -27,9 +27,6 @@
     "openai": "^6.25.0",
     "pg": "^8.13.0",
     "pgvector": "^0.2.1",
-    "proto-parser": "^0.0.9",
-    "tree-sitter-go": "^0.25.0",
-    "web-tree-sitter": "^0.26.6",
     "zod": "^3.23.0"
   },
   "devDependencies": {

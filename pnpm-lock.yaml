@@ -38,12 +38,12 @@ importers:
       '@or/agent':
         specifier: workspace:*
         version: link:../../packages/agent
+      '@or/code-chunker':
+        specifier: workspace:*
+        version: link:../../packages/code-chunker
       '@or/domain':
         specifier: workspace:*
         version: link:../../packages/domain
-      '@typescript-eslint/typescript-estree':
-        specifier: ^8.56.1
-        version: 8.56.1(typescript@5.9.3)
       ai:
         specifier: ^6.0.104
         version: 6.0.104(zod@3.25.76)
@@ -68,15 +68,6 @@ importers:
       pgvector:
         specifier: ^0.2.1
         version: 0.2.1
-      proto-parser:
-        specifier: ^0.0.9
-        version: 0.0.9
-      tree-sitter-go:
-        specifier: ^0.25.0
-        version: 0.25.0
-      web-tree-sitter:
-        specifier: ^0.26.6
-        version: 0.26.6
       zod:
         specifier: ^3.23.0
         version: 3.25.76
@@ -216,6 +207,28 @@ importers:
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@22.19.13)(jiti@1.21.7)(jsdom@28.1.0)(tsx@4.21.0)
+
+  packages/code-chunker:
+    dependencies:
+      '@typescript-eslint/typescript-estree':
+        specifier: ^8.56.1
+        version: 8.56.1(typescript@5.9.3)
+      proto-parser:
+        specifier: ^0.0.9
+        version: 0.0.9
+      tree-sitter-go:
+        specifier: ^0.25.0
+        version: 0.25.0
+      web-tree-sitter:
+        specifier: ^0.26.6
+        version: 0.26.6
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.13
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
 
   packages/config:
     devDependencies:

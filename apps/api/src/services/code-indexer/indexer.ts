@@ -6,12 +6,16 @@
  */
 import type { CodeProvider } from "../../adapters/code/contract.js";
 import type { EmbeddingProvider, VectorEntry, VectorStore } from "../vector/contract.js";
-import { chunkCode, type CodeChunk, type ChunkOptions } from "./chunker.js";
-import { chunkTypeScript } from "./chunker-ast.js";
-import { chunkGo } from "./chunker-ast-go.js";
-import { chunkProto } from "./chunker-proto.js";
-import { chunkCss } from "./chunker-css.js";
-import { chunkHtml } from "./chunker-html.js";
+import {
+  chunkCode,
+  chunkTypeScript,
+  chunkGo,
+  chunkProto,
+  chunkCss,
+  chunkHtml,
+  type CodeChunk,
+  type ChunkOptions,
+} from "@or/code-chunker";
 import { vectorQuery as query } from "../../db/index.js";
 
 const TS_JS_RE = /\.[tj]sx?$/;

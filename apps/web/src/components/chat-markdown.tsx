@@ -170,7 +170,7 @@ const components: Components = {
       );
     }
     return (
-      <code className="rounded bg-base px-1.5 py-0.5 text-xs font-mono text-primary">
+      <code className="rounded bg-base px-1.5 py-0.5 text-xs font-mono text-primary break-all">
         {children}
       </code>
     );

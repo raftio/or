@@ -1037,7 +1037,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
       )}
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden" onScroll={handleScroll}>
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center px-6 text-center">
             <div className="mb-4">
@@ -1078,7 +1078,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
               if (msg.role === "user") {
                 return (
                   <div key={msg.id} className="mb-5 flex justify-end">
-                    <div className="max-w-[80%] rounded-3xl bg-surface px-5 py-3 text-sm text-base-text">
+                    <div className="max-w-[80%] rounded-3xl bg-surface px-5 py-3 text-sm text-base-text break-words">
                       <MessageParts
                         parts={allParts}
                         isUser
@@ -1092,7 +1092,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
               const isLastMsg = msgIdx === messages.length - 1;
               return (
                 <div key={msg.id} className="group/msg mb-5">
-                  <div className="text-sm text-base-text">
+                  <div className="text-sm text-base-text overflow-hidden break-words">
                     <MessageParts
                       parts={allParts}
                       isUser={false}

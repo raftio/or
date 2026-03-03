@@ -1,9 +1,6 @@
-interface IdeCardProps {
-  connected?: boolean;
-  onClick: () => void;
-}
+import type { VendorCardProps } from "./vendor-registry";
 
-export function IdeCard({ onClick }: IdeCardProps) {
+export function IdeCard({ onClick }: VendorCardProps) {
   return (
     <button
       type="button"

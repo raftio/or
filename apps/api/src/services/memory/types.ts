@@ -14,5 +14,6 @@ export interface MemoryProvider {
   save(entry: Omit<MemoryEntry, "id" | "createdAt">): Promise<MemoryEntry>;
   getRecent(workspaceId: string, userId: string, limit?: number): Promise<MemoryEntry[]>;
   search(workspaceId: string, userId: string, query: string): Promise<MemoryEntry[]>;
+  update(id: string, content: string): Promise<MemoryEntry | null>;
   delete(id: string): Promise<boolean>;
 }

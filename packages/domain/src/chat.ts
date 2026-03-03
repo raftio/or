@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const ChatModeSchema = z.enum(["agent", "ask", "plan"]);
+export type ChatMode = z.infer<typeof ChatModeSchema>;
+
 export const ChatMessageRoleSchema = z.enum(["user", "assistant", "system"]);
 
 export const ChatMessageSchema = z.object({

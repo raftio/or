@@ -1,5 +1,5 @@
 import { query } from "../db/index.js";
-import type { ExecutionBundle, BundleStatus } from "@orca/domain";
+import type { ExecutionBundle, BundleStatus } from "@or/domain";
 
 type BundleStatus = "active" | "completed";
 

@@ -227,7 +227,7 @@ export function GitHubCodeForm({
       />
       <Field
         label="Repository"
-        placeholder="e.g. orca"
+        placeholder="e.g. or"
         value={repo}
         onChange={setRepo}
         disabled={!isAdmin}

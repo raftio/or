@@ -1,4 +1,4 @@
-# Orca
+# OR
 
 Control Plane for the product flow: Intent → Execution → Evidence → Outcome → Feedback. Orchestrates tickets, specs, execution bundles, and evidence validation (see [docs/orca.md](docs/orca.md)).
 
@@ -73,9 +73,9 @@ The chat agent is workspace-aware and injects bundle/evidence context into its r
 
 | Package | Description |
 |---------|-------------|
-| `@orca/agent` | Standalone AI chat agent (provider-agnostic, streamable) |
-| `@orca/domain` | Shared Zod schemas and types |
-| `@orca/sdk` | Typed API client |
+| `@or/agent` | Standalone AI chat agent (provider-agnostic, streamable) |
+| `@or/domain` | Shared Zod schemas and types |
+| `@or/sdk` | Typed API client |
 
 ### Examples (curl)
 

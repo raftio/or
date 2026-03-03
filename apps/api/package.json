@@ -1,5 +1,5 @@
 {
-  "name": "@orca/api",
+  "name": "@or/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,8 +16,9 @@
     "@ai-sdk/google": "^3.0.34",
     "@ai-sdk/openai": "^3.0.36",
     "@hono/node-server": "^1.13.0",
-    "@orca/agent": "workspace:*",
-    "@orca/domain": "workspace:*",
+    "@or/agent": "workspace:*",
+    "@or/domain": "workspace:*",
+    "@typescript-eslint/typescript-estree": "^8.56.1",
     "ai": "^6.0.104",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",

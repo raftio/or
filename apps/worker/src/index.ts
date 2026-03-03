@@ -1,21 +1,21 @@
 /**
- * Orca worker – periodic bundle sync and code index sync.
+ * OR worker – periodic bundle sync and code index sync.
  *
  * Env:
- *   ORCA_API_URL   – API base URL (default: http://localhost:3001)
- *   ORCA_API_TOKEN – API token (oq_...) scoped to a workspace
+ *   OR_API_URL   – API base URL (default: http://localhost:3001)
+ *   OR_API_TOKEN – API token (oq_...) scoped to a workspace
  *   BUNDLE_SYNC_INTERVAL_MS   – bundle poll interval in ms (default: 60000, 0 disables)
  *   CODE_INDEX_INTERVAL_MS    – code index poll interval in ms (default: 300000, 0 disables)
  */
-import { createClient } from "@orca/sdk";
+import { createClient } from "@or/sdk";
 
-const apiUrl = process.env.ORCA_API_URL || "http://localhost:3001";
-const apiToken = process.env.ORCA_API_TOKEN;
+const apiUrl = process.env.OR_API_URL || "http://localhost:3001";
+const apiToken = process.env.OR_API_TOKEN;
 const bundleIntervalMs = Number(process.env.BUNDLE_SYNC_INTERVAL_MS) || 60_000;
 const codeIndexIntervalMs = Number(process.env.CODE_INDEX_INTERVAL_MS) || 300_000;
 
 if (!apiToken) {
-  console.error("[worker] ORCA_API_TOKEN is required");
+  console.error("[worker] OR_API_TOKEN is required");
   process.exit(1);
 }
 

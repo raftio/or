@@ -57,7 +57,7 @@ async function start() {
   }
 
   serve({ fetch: app.fetch, port }, (info) => {
-    console.log(`Orca listening on http://localhost:${info.port}`);
+    console.log(`OR listening on http://localhost:${info.port}`);
   });
 }
 

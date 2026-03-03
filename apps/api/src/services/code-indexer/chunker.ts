@@ -9,6 +9,7 @@ export interface CodeChunk {
   content: string;
   startLine: number;
   endLine: number;
+  symbol?: string;
 }
 
 export interface ChunkOptions {

@@ -1,40 +1,40 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: orca-postgres
+    container_name: or-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: orca
-      POSTGRES_PASSWORD: orca
-      POSTGRES_DB: orca
+      POSTGRES_USER: or
+      POSTGRES_PASSWORD: or
+      POSTGRES_DB: or
     ports:
       - "5432:5432"
     volumes:
-      - orca_pgdata:/var/lib/postgresql/data
+      - or_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orca -d orca"]
+      test: ["CMD-SHELL", "pg_isready -U or -d or"]
       interval: 3s
       timeout: 3s
       retries: 5
 
   pgvector:
     image: pgvector/pgvector:pg16
-    container_name: orca-pgvector
+    container_name: or-pgvector
     restart: unless-stopped
     environment:
-      POSTGRES_USER: orca
-      POSTGRES_PASSWORD: orca
-      POSTGRES_DB: orca_vectors
+      POSTGRES_USER: or
+      POSTGRES_PASSWORD: or
+      POSTGRES_DB: or_vectors
     ports:
       - "5434:5432"
     volumes:
-      - orca_vectordata:/var/lib/postgresql/data
+      - or_vectordata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orca -d orca_vectors"]
+      test: ["CMD-SHELL", "pg_isready -U or -d or_vectors"]
       interval: 3s
       timeout: 3s
       retries: 5
 
 volumes:
-  orca_pgdata:
-  orca_vectordata:
+  or_pgdata:
+  or_vectordata:

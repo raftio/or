@@ -1,9 +1,9 @@
 /**
- * Typed API client for Orca.
+ * Typed API client for OR.
  */
-import type { EvidencePayload, ExecutionBundle } from "@orca/domain";
+import type { EvidencePayload, ExecutionBundle } from "@or/domain";
 
-export interface OrcaClientOptions {
+export interface ORClientOptions {
   baseUrl: string;
   apiToken?: string;
 }
@@ -20,7 +20,7 @@ export interface SyncCodeIndexResult {
   message?: string;
 }
 
-export function createClient(options: OrcaClientOptions) {
+export function createClient(options: ORClientOptions) {
   const { baseUrl, apiToken } = options;
 
   function headers(extra?: Record<string, string>): Record<string, string> {
@@ -71,4 +71,4 @@ export function createClient(options: OrcaClientOptions) {
   };
 }
 
-export type OrcaClient = ReturnType<typeof createClient>;
+export type ORClient = ReturnType<typeof createClient>;

@@ -4,7 +4,7 @@
 import { createTicketProvider, createTicketProviderForWorkspace } from "../adapters/ticket/index.js";
 import { createDocumentProvider, createDocumentProviderForWorkspace } from "../adapters/document/index.js";
 import { getContextCacheTtlMinutes } from "../config.js";
-import type { SynthesizedContext } from "@orca/domain";
+import type { SynthesizedContext } from "@or/domain";
 
 interface CacheEntry {
   context: SynthesizedContext;

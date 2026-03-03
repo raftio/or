@@ -17,7 +17,7 @@ export function createModelChatAgent(model: LanguageModel): ChatAgent {
 
       return streamText({
         model,
-        system: buildSystemPrompt(input.systemContext, input.memoriesContext),
+        system: buildSystemPrompt(input.systemContext, input.memoriesContext, input.mode),
         messages,
         tools: input.tools,
         stopWhen: stepCountIs(maxSteps),

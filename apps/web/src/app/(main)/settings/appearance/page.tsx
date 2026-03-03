@@ -11,7 +11,7 @@ export default function AppearancePage() {
         Appearance
       </h1>
       <p className="mt-1 text-sm text-base-text-muted">
-        Customize the look and feel of Orca.
+        Customize the look and feel of OR.
       </p>
 
       {/* Mode */}

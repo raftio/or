@@ -22,15 +22,24 @@ export interface IntegrationFormProps {
 
 export type SourceType = "tasks" | "docs" | "code" | "evidence" | "cicd";
 
+export interface VendorCardProps {
+  connected: boolean;
+  onClick: () => void;
+  /** Short human-readable summary of the connection (e.g. "raftio/or"). */
+  detail?: string;
+}
+
 export interface VendorConfig {
   id: string;
   title: string;
   sourceType: SourceType;
   /** Provider key in workspace_integrations. Undefined = no backend state. */
   integrationProvider?: string;
-  cardComponent: ComponentType<{ connected: boolean; onClick: () => void }>;
+  cardComponent: ComponentType<VendorCardProps>;
   /** Form shown in the drawer. Receives IntegrationFormProps when integrationProvider is set. */
   formComponent?: ComponentType<any>;
+  /** Extract a displayable connection summary from the stored integration config. */
+  describeConnection?: (integration: any) => string | undefined;
 }
 
 export const VENDORS: VendorConfig[] = [
@@ -41,6 +50,7 @@ export const VENDORS: VendorConfig[] = [
     integrationProvider: "jira",
     cardComponent: JiraCard,
     formComponent: JiraForm,
+    describeConnection: (i) => i?.config?.base_url,
   },
   {
     id: "github",
@@ -49,6 +59,10 @@ export const VENDORS: VendorConfig[] = [
     integrationProvider: "github",
     cardComponent: GitHubIssuesCard,
     formComponent: GitHubIssuesForm,
+    describeConnection: (i) =>
+      i?.config?.owner && i?.config?.repo
+        ? `${i.config.owner}/${i.config.repo}`
+        : undefined,
   },
   {
     id: "notion",
@@ -65,6 +79,10 @@ export const VENDORS: VendorConfig[] = [
     integrationProvider: "github_code",
     cardComponent: GitHubCodeCard,
     formComponent: GitHubCodeForm,
+    describeConnection: (i) =>
+      i?.config?.owner && i?.config?.repo
+        ? `${i.config.owner}/${i.config.repo}`
+        : undefined,
   },
   {
     id: "ide",

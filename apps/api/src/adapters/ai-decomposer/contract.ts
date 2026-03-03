@@ -1,4 +1,4 @@
-import type { DecompositionResult } from "@orca/domain";
+import type { DecompositionResult } from "@or/domain";
 import type { DecomposeInput } from "./types.js";
 
 export interface BundleDecomposer {

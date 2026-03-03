@@ -6,8 +6,8 @@ import Link from "next/link";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 const EXTENSION_CONFIG = `{
-  "orca.apiUrl": "${API_URL}",
-  "orca.apiToken": "<paste-your-token-here>"
+  "or.apiUrl": "${API_URL}",
+  "or.apiToken": "<paste-your-token-here>"
 }`;
 
 export function IdeSetup() {
@@ -28,7 +28,7 @@ export function IdeSetup() {
       <section>
         <h3 className="text-sm font-semibold text-base-text">1. Install the extension</h3>
         <p className="mt-2 text-sm leading-relaxed text-base-text-muted">
-          Install the <strong>Orca</strong> extension from the VS Marketplace,
+          Install the <strong>OR</strong> extension from the VS Marketplace,
           or build and install the VSIX from the{" "}
           <code className="rounded bg-base px-1.5 py-0.5 text-xs font-mono text-base-text">
             vsc-orca
@@ -59,7 +59,7 @@ export function IdeSetup() {
         <h3 className="text-sm font-semibold text-base-text">3. Configure settings</h3>
         <p className="mt-2 text-sm leading-relaxed text-base-text-muted">
           Open VSCode/Cursor Settings (<kbd className="rounded bg-base px-1.5 py-0.5 text-xs font-mono">Cmd+,</kbd>)
-          and search for <strong>Orca</strong>, or add to your{" "}
+          and search for <strong>OR</strong>, or add to your{" "}
           <code className="rounded bg-base px-1.5 py-0.5 text-xs font-mono text-base-text">
             settings.json
           </code>
@@ -83,7 +83,7 @@ export function IdeSetup() {
         <h3 className="text-sm font-semibold text-base-text">4. Fetch your first bundle</h3>
         <p className="mt-2 text-sm leading-relaxed text-base-text-muted">
           Open the command palette (<kbd className="rounded bg-base px-1.5 py-0.5 text-xs font-mono">Cmd+Shift+P</kbd>)
-          and run <strong>Orca: Fetch Bundle</strong>. Enter a Jira ticket ID
+          and run <strong>OR: Fetch Bundle</strong>. Enter a Jira ticket ID
           to load the execution bundle into the sidebar.
         </p>
       </section>
@@ -93,19 +93,19 @@ export function IdeSetup() {
         <ul className="mt-2 space-y-1.5 text-sm text-base-text-muted">
           <li>
             <code className="rounded bg-base px-1.5 py-0.5 text-xs font-mono text-base-text">
-              Orca: Fetch Bundle
+              OR: Fetch Bundle
             </code>{" "}
             — load execution bundle for a ticket
           </li>
           <li>
             <code className="rounded bg-base px-1.5 py-0.5 text-xs font-mono text-base-text">
-              Orca: Submit Evidence
+              OR: Submit Evidence
             </code>{" "}
             — report local test results
           </li>
           <li>
             <code className="rounded bg-base px-1.5 py-0.5 text-xs font-mono text-base-text">
-              Orca: Disconnect
+              OR: Disconnect
             </code>{" "}
             — clear the current bundle
           </li>

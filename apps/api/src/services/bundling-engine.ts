@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import * as bundleStore from "./bundle-store.js";
 import { synthesizeContext } from "./context-synthesis.js";
 import { createBundleDecomposerForWorkspace, createBundleDecomposer } from "../adapters/ai-decomposer/index.js";
-import type { ExecutionBundle } from "@orca/domain";
+import type { ExecutionBundle } from "@or/domain";
 import type { EmbeddingProvider, VectorStore } from "./vector/contract.js";
 import { vectorQuery as dbQuery } from "../db/index.js";
 
@@ -94,6 +94,17 @@ export async function buildBundle(
   const spec_ref = input.spec_ref ?? "";
   const ticket_ref = context.ticket_key;
 
+  let codeResults: CodeSearchResult[] = [];
+  if (input.embeddingProvider && input.vectorStore) {
+    const searchQuery = `${context.ticket_title} ${context.ticket_description}`;
+    codeResults = await searchCode(
+      input.workspace_id,
+      searchQuery,
+      input.embeddingProvider,
+      input.vectorStore,
+    );
+  }
+
   const decomposer =
     input.use_ai === false
       ? createBundleDecomposer()
@@ -104,6 +115,7 @@ export async function buildBundle(
     ticket_description: context.ticket_description,
     sections: context.sections,
     acceptance_criteria: context.acceptance_criteria,
+    code_context: codeResults.length > 0 ? codeResults : undefined,
   });
 
   const tasks = result.tasks.map((t) => ({
@@ -138,19 +150,7 @@ export async function buildBundle(
   const meta: Record<string, unknown> = {};
   if (result.reasoning) meta.ai_reasoning = result.reasoning;
   if (result.suggested_ac?.length) meta.suggested_ac = result.suggested_ac;
-
-  if (input.embeddingProvider && input.vectorStore) {
-    const searchQuery = `${context.ticket_title} ${context.ticket_description}`;
-    const codeResults = await searchCode(
-      input.workspace_id,
-      searchQuery,
-      input.embeddingProvider,
-      input.vectorStore,
-    );
-    if (codeResults.length > 0) {
-      meta.code_search_results = codeResults;
-    }
-  }
+  if (codeResults.length > 0) meta.code_search_results = codeResults.slice(0, 5);
 
   if (context.sections?.length) {
     meta.doc_sections = context.sections;

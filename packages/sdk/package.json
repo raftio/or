@@ -1,5 +1,5 @@
 {
-  "name": "@orca/sdk",
+  "name": "@or/sdk",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "build": "tsc",
     "lint": "eslint src --ext .ts"
   },
-  "dependencies": { "@orca/domain": "workspace:*" },
+  "dependencies": { "@or/domain": "workspace:*" },
   "devDependencies": {
     "typescript": "^5.6.0"
   }

@@ -280,7 +280,7 @@ export function Navbar() {
             href="/"
             className="flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight text-base-text no-underline hover:no-underline"
           >
-            Orca
+            OR
           </Link>
 
           <div className="h-5 w-px shrink-0 bg-base-border" />

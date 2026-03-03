@@ -18,16 +18,16 @@
 }
 
 .dark {
-  --color-bg: #1A1A1A;
-  --color-surface: #2A2A2A;
-  --color-surface-alt: rgba(42, 42, 42, 0.8);
+  --color-bg: #0A0A0A;
+  --color-surface: #141414;
+  --color-surface-alt: rgba(20, 20, 20, 0.85);
   --color-primary: #FFFFFF;
   --color-primary-hover: #D1D1D6;
-  --color-secondary: #A0A0B4;
-  --color-glow: #4A4A5A;
-  --color-text: #EFEFEF;
-  --color-text-muted: #A0A0B4;
-  --color-border: #3D3D4E;
+  --color-secondary: #8A8A9A;
+  --color-glow: #3A3A48;
+  --color-text: #F0F0F0;
+  --color-text-muted: #7A7A8C;
+  --color-border: #222230;
 }
 
 @layer base {

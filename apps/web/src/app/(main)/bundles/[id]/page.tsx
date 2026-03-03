@@ -108,6 +108,7 @@ export default function BundleDetailPage() {
     message: string;
   } | null>(null);
   const [completionToast, setCompletionToast] = useState<string | null>(null);
+  const [expandedCodeRefs, setExpandedCodeRefs] = useState<Set<number>>(new Set());
 
   const fetchBundle = useCallback(async () => {
     if (!activeWorkspace || !token || !id) return;
@@ -633,14 +634,27 @@ export default function BundleDetailPage() {
               <div className="mt-4">
                 <p className="text-xs font-medium text-base-text-muted">Related Tickets</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {bundle.context!.related_ticket_ids.map((tid) => (
-                    <span
-                      key={tid}
-                      className="rounded-full border border-base-border bg-surface px-3 py-1 text-xs font-mono text-base-text"
-                    >
-                      {tid}
-                    </span>
-                  ))}
+                  {bundle.context!.related_ticket_ids.map((tid) =>
+                    /^https?:\/\//.test(tid) ? (
+                      <a
+                        key={tid}
+                        href={tid}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs font-mono text-primary underline decoration-primary/40 underline-offset-2 hover:bg-primary/15 hover:border-primary/50 transition-colors cursor-pointer"
+                      >
+                        {tid}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" aria-hidden><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      </a>
+                    ) : (
+                      <span
+                        key={tid}
+                        className="rounded-full border border-base-border bg-surface px-3 py-1 text-xs font-mono text-base-text"
+                      >
+                        {tid}
+                      </span>
+                    ),
+                  )}
                 </div>
               </div>
             )}
@@ -656,30 +670,62 @@ export default function BundleDetailPage() {
             <div className="mt-3">
               <p className="text-xs font-medium text-base-text-muted">Code</p>
               <div className="mt-2 space-y-3">
-                {codeRefs.map((ref, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl border border-base-border bg-surface p-4"
-                  >
-                    <div className="flex items-center gap-2 text-sm">
-                      <code className="font-mono text-xs text-primary">{ref.file}</code>
-                      <span className="text-[10px] text-base-text-muted">
-                        lines {ref.lines}
-                      </span>
-                      {ref.language && (
-                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                          {ref.language}
+                {codeRefs.map((ref, idx) => {
+                  const isExpanded = expandedCodeRefs.has(idx);
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-xl border border-base-border bg-surface"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedCodeRefs((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(idx)) next.delete(idx);
+                            else next.add(idx);
+                            return next;
+                          })
+                        }
+                        className="flex w-full items-center gap-2 p-4 text-left text-sm hover:bg-base-border/10 transition-colors rounded-xl"
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className={`shrink-0 text-base-text-muted transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                          aria-hidden
+                        >
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                        <code className="font-mono text-xs text-primary">{ref.file}</code>
+                        <span className="text-[10px] text-base-text-muted">
+                          lines {ref.lines}
                         </span>
+                        {ref.language && (
+                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                            {ref.language}
+                          </span>
+                        )}
+                        <span className="ml-auto text-[10px] text-base-text-muted">
+                          score {ref.score}
+                        </span>
+                      </button>
+                      {isExpanded && (
+                        <div className="px-4 pb-4">
+                          <pre className="overflow-x-auto rounded-lg bg-base p-3 text-xs text-base-text">
+                            <code>{ref.code}</code>
+                          </pre>
+                        </div>
                       )}
-                      <span className="ml-auto text-[10px] text-base-text-muted">
-                        score {ref.score}
-                      </span>
                     </div>
-                    <pre className="mt-2 overflow-x-auto rounded-lg bg-base p-3 text-xs text-base-text">
-                      <code>{ref.code}</code>
-                    </pre>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

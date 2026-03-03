@@ -10,7 +10,7 @@ import {
 
 type Theme = "light" | "dark";
 
-const STORAGE_KEY = "orca_theme";
+const STORAGE_KEY = "or_theme";
 
 const ThemeContext = createContext<{
   theme: Theme;

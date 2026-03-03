@@ -36,9 +36,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const t = localStorage.getItem("orca_token");
-    const e = localStorage.getItem("orca_user");
-    const n = localStorage.getItem("orca_user_name");
+    const t = localStorage.getItem("or_token");
+    const e = localStorage.getItem("or_user");
+    const n = localStorage.getItem("or_user_name");
     setToken(t);
     setUserEmail(e);
     setUserName(n);
@@ -53,11 +53,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .then((data) => {
           if (!data?.user) return;
           if (data.user.email) {
-            localStorage.setItem("orca_user", data.user.email);
+            localStorage.setItem("or_user", data.user.email);
             setUserEmail(data.user.email);
           }
           if (data.user.name) {
-            localStorage.setItem("orca_user_name", data.user.name);
+            localStorage.setItem("or_user_name", data.user.name);
             setUserName(data.user.name);
           }
         })
@@ -67,13 +67,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     function onStorage(e: StorageEvent) {
-      if (e.key === "orca_token") {
+      if (e.key === "or_token") {
         setToken(e.newValue);
       }
-      if (e.key === "orca_user") {
+      if (e.key === "or_user") {
         setUserEmail(e.newValue);
       }
-      if (e.key === "orca_user_name") {
+      if (e.key === "or_user_name") {
         setUserName(e.newValue);
       }
     }
@@ -82,9 +82,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem("orca_token");
-    localStorage.removeItem("orca_user");
-    localStorage.removeItem("orca_user_name");
+    localStorage.removeItem("or_token");
+    localStorage.removeItem("or_user");
+    localStorage.removeItem("or_user_name");
     setToken(null);
     setUserEmail(null);
     setUserName(null);

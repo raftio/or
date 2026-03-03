@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "./auth-provider";
+import { PersonalizePopup } from "./personalize-popup";
 
 export function UserMenu() {
   const { isLoggedIn, userEmail, userName, logout } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [personalizeOpen, setPersonalizeOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -97,6 +99,31 @@ export function UserMenu() {
             type="button"
             onClick={() => {
               setOpen(false);
+              setPersonalizeOpen(true);
+            }}
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-base-text-muted transition-colors hover:bg-primary/5 hover:text-base-text"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+            >
+              <path d="M20 7h-9" />
+              <path d="M14 17H5" />
+              <circle cx="17" cy="17" r="3" />
+              <circle cx="7" cy="7" r="3" />
+            </svg>
+            Personalize
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
               logout();
             }}
             className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-primary/5"
@@ -119,6 +146,10 @@ export function UserMenu() {
           </button>
         </div>
       )}
+      <PersonalizePopup
+        open={personalizeOpen}
+        onClose={() => setPersonalizeOpen(false)}
+      />
     </div>
   );
 }

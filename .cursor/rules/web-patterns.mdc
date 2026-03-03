@@ -22,7 +22,7 @@ ThemeProvider → AuthProvider → WorkspaceProvider → Navbar + Sidebar + chil
 
 ## Authentication
 
-- JWT stored in `localStorage` as `orca_token`, user info as `orca_user` / `orca_user_name`
+- JWT stored in `localStorage` as `or_token`, user info as `or_user` / `or_user_name`
 - `useAuth()` hook from `AuthProvider` exposes `hydrated`, `isLoggedIn`, `token`, `email`
 - Main layout guards routes: redirects to `/login` when `hydrated && !isLoggedIn`
 
@@ -45,4 +45,4 @@ Theme variables (light/dark + accent) are defined as CSS custom properties in `g
 
 ## Chat Integration
 
-Uses Vercel AI SDK's `useChat` hook with `DefaultChatTransport` — not `@orca/sdk`. The transport configures the API endpoint and auth headers.
+Uses Vercel AI SDK's `useChat` hook with `DefaultChatTransport` — not `@or/sdk`. The transport configures the API endpoint and auth headers.

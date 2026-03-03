@@ -55,17 +55,17 @@ export default function RegisterPage() {
       }
       if (data.token) {
         if (typeof window !== "undefined") {
-          localStorage.setItem("orca_token", data.token);
+          localStorage.setItem("or_token", data.token);
         }
       }
       if (data.user?.email) {
         if (typeof window !== "undefined") {
-          localStorage.setItem("orca_user", data.user.email);
+          localStorage.setItem("or_user", data.user.email);
         }
       }
       if (data.user?.name) {
         if (typeof window !== "undefined") {
-          localStorage.setItem("orca_user_name", data.user.name);
+          localStorage.setItem("or_user_name", data.user.name);
         }
       }
       window.location.href = "/";
@@ -96,7 +96,7 @@ export default function RegisterPage() {
             href="/"
             className="text-3xl font-bold tracking-tight text-base-text no-underline hover:text-primary"
           >
-            Orca
+            OR
           </Link>
           <p className="mt-1 text-sm text-base-text-muted">
             Create an account

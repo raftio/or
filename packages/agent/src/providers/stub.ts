@@ -4,14 +4,15 @@ import type { ChatInput } from "../types.js";
 
 const STUB_RESPONSES: Record<string, string> = {
   default:
-    "I'm the Orca Assistant running in stub mode. To enable AI responses, configure an AI provider (OpenAI or Anthropic) in your workspace settings or environment variables.",
+    "I'm the OR Assistant running in stub mode. To enable AI responses, configure an AI provider (OpenAI or Anthropic) in your workspace settings or environment variables.",
   hello:
-    "Hello! I'm the Orca Assistant. I can help you understand your execution bundles, evidence status, and workspace data. What would you like to know?",
+    "Hello! I'm the OR Assistant. I can help you understand your execution bundles, evidence status, and workspace data. What would you like to know?",
   help: "Here's what I can help with:\n\n- **Bundles**: Understand tasks, dependencies, and acceptance criteria\n- **Evidence**: Check test results, coverage, and CI status\n- **Tickets**: Get guidance on decomposition and planning\n- **Integrations**: Understand your workspace setup\n\nAsk me anything about your workspace!",
 };
 
 function pickResponse(messages: ChatInput["messages"]): string {
-  const last = messages[messages.length - 1]?.content?.toLowerCase() ?? "";
+  const raw = messages[messages.length - 1]?.content;
+  const last = (typeof raw === "string" ? raw : "").toLowerCase();
   if (last.includes("hello") || last.includes("hi")) return STUB_RESPONSES.hello;
   if (last.includes("help")) return STUB_RESPONSES.help;
   return STUB_RESPONSES.default;

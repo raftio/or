@@ -5,8 +5,7 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { useAuth } from "@/components/auth-provider";
 import { IntegrationDrawer } from "./_components/integration-drawer";
 import { VENDORS } from "./_components/vendor-registry";
-import { CicdCard } from "./_components/cicd-card";
-import { GitProviderCard } from "./_components/git-provider-card";
+import { VendorList } from "./_components/vendor-list";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -57,13 +56,6 @@ export default function IntegrationPage() {
   const isAdmin =
     activeWorkspace?.role === "owner" || activeWorkspace?.role === "admin";
 
-  const connectedVendors = VENDORS.filter(
-    (v) => v.integrationProvider && integrations[v.integrationProvider],
-  );
-  const availableVendors = VENDORS.filter(
-    (v) => !v.integrationProvider || !integrations[v.integrationProvider],
-  );
-
   const currentVendor = VENDORS.find((v) => v.id === openVendor);
   const FormComponent = currentVendor?.formComponent;
 
@@ -73,48 +65,18 @@ export default function IntegrationPage() {
         Integrations
       </h1>
       <p className="mt-3 text-base-text-muted">
-        Connect Orca with your existing tools — CI/CD pipelines, IDEs, Git
+        Connect OR with your existing tools — CI/CD pipelines, IDEs, Git
         providers, and more.
       </p>
 
       {loading ? (
         <p className="mt-10 text-sm text-base-text-muted">Loading...</p>
       ) : (
-        <>
-          {connectedVendors.length > 0 && (
-            <section className="mt-10">
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-base-text-muted">
-                Connected
-              </h2>
-              <div className="grid gap-6 sm:grid-cols-2">
-                {connectedVendors.map((v) => (
-                  <v.cardComponent
-                    key={v.id}
-                    connected
-                    onClick={() => setOpenVendor(v.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          <section className="mt-10">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-base-text-muted">
-              Available
-            </h2>
-            <div className="grid gap-6 sm:grid-cols-2">
-              {availableVendors.map((v) => (
-                <v.cardComponent
-                  key={v.id}
-                  connected={false}
-                  onClick={() => setOpenVendor(v.id)}
-                />
-              ))}
-              <CicdCard />
-              <GitProviderCard />
-            </div>
-          </section>
-        </>
+        <VendorList
+          vendors={VENDORS}
+          integrations={integrations}
+          onVendorClick={setOpenVendor}
+        />
       )}
 
       <IntegrationDrawer

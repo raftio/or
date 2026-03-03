@@ -85,13 +85,13 @@ They do not optimize workflow throughput.
 
 And workflow throughput — not code velocity — determines how many real outcomes a team can produce.
 
-## What is the Orca offer ?
+## What is the OR offer ?
 
-Orca provides an AI-powered control plane for product-driven engineering teams.
+OR provides an AI-powered control plane for product-driven engineering teams.
 
 It does not replace development tools, project management systems, or code editors. Instead, it orchestrates them.
 
-Orca connects product intent to execution and validation by introducing a structured workflow layer that:
+OR connects product intent to execution and validation by introducing a structured workflow layer that:
 
 - Converts specifications into structured, machine-readable execution bundles
 - Synchronizes context across Jira, Confluence, Git, CI/CD, and IDE environments
@@ -99,7 +99,7 @@ Orca connects product intent to execution and validation by introducing a struct
 - Validates implementation evidence before human review
 - Reduces cross-role handoff latency across PM, Engineering, QA, and Review
 
-Where existing AI tools optimize code generation, Orca optimizes workflow throughput.
+Where existing AI tools optimize code generation, OR optimizes workflow throughput.
 
 It ensures that:
 
@@ -107,13 +107,13 @@ It ensures that:
 - More pull requests translate into measurable product outcomes
 - Product intent remains traceable through implementation and release
 
-Orca turns fragmented AI-assisted development into coordinated, outcome-driven execution.
+OR turns fragmented AI-assisted development into coordinated, outcome-driven execution.
 
 # **The Idea**
 
-Orca acts as a cloud-native control plane that continuously enriches product intent with execution context and measurable outcome signals.
+OR acts as a cloud-native control plane that continuously enriches product intent with execution context and measurable outcome signals.
 
-Instead of allowing specifications, tickets, code, and metrics to exist as disconnected artifacts, Orca creates a structured, traceable loop between:
+Instead of allowing specifications, tickets, code, and metrics to exist as disconnected artifacts, OR creates a structured, traceable loop between:
 
 ```
 Intent → Execution → Evidence → Outcome → Feedback
@@ -165,7 +165,7 @@ Responsibilities:
 - Evidence generation
 - PR submission
 
-Orca does not replace the execution plane.
+OR does not replace the execution plane.
 
 It coordinates and validates it.
 

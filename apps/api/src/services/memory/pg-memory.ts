@@ -72,6 +72,14 @@ export class PgMemoryProvider implements MemoryProvider {
     return result.rows.map(toEntry);
   }
 
+  async update(id: string, content: string): Promise<MemoryEntry | null> {
+    const result = await query<MemoryRow>(
+      `UPDATE workspace_chat_memories SET content = $2 WHERE id = $1 RETURNING *`,
+      [id, content],
+    );
+    return result.rows[0] ? toEntry(result.rows[0]) : null;
+  }
+
   async delete(id: string): Promise<boolean> {
     const result = await query(
       `DELETE FROM workspace_chat_memories WHERE id = $1`,

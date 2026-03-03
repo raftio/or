@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { BundleStatusSchema } from "@orca/domain";
+import { BundleStatusSchema } from "@or/domain";
 import * as bundleStore from "../../services/bundle-store.js";
 import { buildBundle } from "../../services/bundling-engine.js";
 import { createTicketProviderForWorkspace } from "../../adapters/ticket/index.js";
@@ -300,7 +300,7 @@ app.get("/bundles", async (c) => {
   const limit = Number(c.req.query("limit")) || 50;
   const offset = Number(c.req.query("offset")) || 0;
   const rawStatus = c.req.query("status");
-  const status = rawStatus ? BundleStatusSchema.parse(rawStatus) : undefined;
+  const status = rawStatus ? BundleStatusSchema.parse(rawStatus) : "active";
   const result = await bundleStore.listBundles(workspaceId, { limit, offset, status });
   return c.json(result);
 });

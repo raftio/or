@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCallback, useState } from "react";
 
 const mainItems = [
   {
@@ -91,10 +92,26 @@ const workspaceItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("sidebar-collapsed") === "1";
+  });
+
+  const toggle = useCallback(() => {
+    setCollapsed((c) => {
+      const next = !c;
+      localStorage.setItem("sidebar-collapsed", next ? "1" : "0");
+      return next;
+    });
+  }, []);
 
   return (
-    <aside className="flex h-full w-52 shrink-0 flex-col border-r border-base-border bg-surface-alt">
-      <nav className="flex-1 overflow-y-auto px-2.5 pt-3 pb-4">
+    <aside
+      className={`flex h-full shrink-0 flex-col border-r border-base-border bg-surface-alt transition-[width] duration-200 ${
+        collapsed ? "w-14" : "w-52"
+      }`}
+    >
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 pt-3 pb-4">
         <ul className="flex flex-col gap-0.5">
           {mainItems.map(({ label, href, match, icon }) => {
             const active = match === "prefix" ? pathname.startsWith(href) : pathname === href;
@@ -102,14 +119,17 @@ export function Sidebar() {
               <li key={href}>
                 <Link
                   href={href}
+                  title={collapsed ? label : undefined}
                   className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium no-underline transition-colors ${
+                    collapsed ? "justify-center" : ""
+                  } ${
                     active
                       ? "bg-primary/10 text-primary"
                       : "text-base-text-muted hover:bg-primary/5 hover:text-base-text"
                   }`}
                 >
-                  {icon}
-                  {label}
+                  <span className="shrink-0">{icon}</span>
+                  {!collapsed && <span>{label}</span>}
                 </Link>
               </li>
             );
@@ -117,9 +137,11 @@ export function Sidebar() {
         </ul>
 
         <div className="mt-5">
-          <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-base-text-muted">
-            Settings
-          </p>
+          {!collapsed && (
+            <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-base-text-muted">
+              Settings
+            </p>
+          )}
           <ul className="flex flex-col gap-0.5">
             {workspaceItems.map(({ label, href, icon }) => {
               const active = pathname === href;
@@ -127,14 +149,17 @@ export function Sidebar() {
                 <li key={href}>
                   <Link
                     href={href}
+                    title={collapsed ? label : undefined}
                     className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium no-underline transition-colors ${
+                      collapsed ? "justify-center" : ""
+                    } ${
                       active
                         ? "bg-primary/10 text-primary"
                         : "text-base-text-muted hover:bg-primary/5 hover:text-base-text"
                     }`}
                   >
-                    {icon}
-                    {label}
+                    <span className="shrink-0">{icon}</span>
+                    {!collapsed && <span>{label}</span>}
                   </Link>
                 </li>
               );
@@ -142,6 +167,28 @@ export function Sidebar() {
           </ul>
         </div>
       </nav>
+
+      <button
+        onClick={toggle}
+        className="flex items-center justify-center border-t border-base-border px-3 py-2.5 text-base-text-muted transition-colors hover:bg-primary/5 hover:text-base-text"
+        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
+          aria-hidden
+        >
+          <path d="m11 17-5-5 5-5" />
+          <path d="m18 17-5-5 5-5" />
+        </svg>
+      </button>
     </aside>
   );
 }

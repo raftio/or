@@ -7,6 +7,7 @@ import { useAuth } from "../../../components/auth-provider";
 import { useWorkspace } from "../../../components/workspace-provider";
 import { ChatMarkdown } from "../../../components/chat-markdown";
 import { ImageLightbox } from "../../../components/image-lightbox";
+import { OrLoader } from "../../../components/or-loader";
 import { useNavbarSlot } from "../../../components/navbar-slot-provider";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -206,10 +207,20 @@ interface ToolInvocation {
   result?: unknown;
 }
 
-function ToolResultCard({ invocation }: { invocation: ToolInvocation }) {
+function ToolResultCard({ invocation, streaming }: { invocation: ToolInvocation; streaming?: boolean }) {
   const meta = TOOL_LABELS[invocation.toolName] ?? { label: invocation.toolName, icon: "" };
 
   if (invocation.state === "call" || invocation.state === "partial-call") {
+    if (!streaming) {
+      return (
+        <div className="my-1.5 flex items-center gap-2 rounded-lg border border-base-border bg-base/50 px-3 py-2 text-xs text-base-text-muted">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+          </svg>
+          <span>{meta.label} — stopped</span>
+        </div>
+      );
+    }
     return (
       <div className="my-1.5 flex items-center gap-2 rounded-lg border border-base-border bg-base/50 px-3 py-2 text-xs text-base-text-muted">
         <div className="h-3 w-3 animate-spin rounded-full border border-base-border border-t-primary" />
@@ -379,18 +390,46 @@ function EventStreamIndicator({ status, error, onReconnect }: { status: EventStr
 interface MessagePart {
   type: string;
   text?: string;
+  state?: string;
   toolInvocation?: ToolInvocation;
   imageUrl?: string;
   imageFilename?: string;
+  // AI SDK v6 tool part fields
+  toolCallId?: string;
+  toolName?: string;
+  input?: Record<string, unknown>;
+  output?: unknown;
+  errorText?: string;
+}
+
+function isToolPart(part: MessagePart): boolean {
+  return part.type === "dynamic-tool" || (part.type.startsWith("tool-") && part.type !== "tool-invocation");
+}
+
+function toolPartToInvocation(part: MessagePart): ToolInvocation {
+  const toolName = part.type === "dynamic-tool"
+    ? (part.toolName ?? "unknown")
+    : part.type.replace(/^tool-/, "");
+  const isInProgress = part.state === "input-streaming" || part.state === "input-available";
+  const isError = part.state === "output-error";
+  return {
+    toolCallId: part.toolCallId ?? "",
+    toolName,
+    args: (part.input ?? {}) as Record<string, unknown>,
+    state: isInProgress ? "call" : "result",
+    result: isError ? { error: part.errorText } : part.output,
+  };
 }
 
 function MessageParts({
   parts,
   isUser,
+  streaming,
   onImageClick,
 }: {
   parts: MessagePart[];
   isUser: boolean;
+  streaming?: boolean;
   onImageClick?: (imageUrl: string, allImages: { url: string; filename?: string }[]) => void;
 }) {
   const imageUrls = parts
@@ -418,8 +457,39 @@ function MessageParts({
             <ChatMarkdown key={i} content={part.text} />
           );
         }
+        if (part.type === "reasoning") {
+          if (!part.text) {
+            return (
+              <div key={i} className="my-1.5 flex items-center gap-2 text-xs text-base-text-muted">
+                <div className="h-3 w-3 animate-spin rounded-full border border-base-border border-t-primary" />
+                <span>Thinking...</span>
+              </div>
+            );
+          }
+          return (
+            <details key={i} className="my-1.5 rounded-lg border border-base-border bg-base/50 text-xs">
+              <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-2 font-medium text-base-text-muted hover:text-base-text">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4" />
+                  <path d="M12 8h.01" />
+                </svg>
+                {part.state === "streaming" ? "Thinking..." : "Thought process"}
+              </summary>
+              <div className="border-t border-base-border px-3 py-2 text-base-text-muted whitespace-pre-wrap">
+                {part.text}
+              </div>
+            </details>
+          );
+        }
         if (part.type === "tool-invocation" && part.toolInvocation) {
-          return <ToolResultCard key={i} invocation={part.toolInvocation} />;
+          return <ToolResultCard key={i} invocation={part.toolInvocation} streaming={streaming} />;
+        }
+        if (isToolPart(part)) {
+          return <ToolResultCard key={i} invocation={toolPartToInvocation(part)} streaming={streaming} />;
+        }
+        if (part.type === "step-start") {
+          return null;
         }
         return null;
       })}
@@ -499,6 +569,14 @@ export default function ChatPage() {
   return <ChatInner key={workspaceId} workspaceId={workspaceId} token={token} />;
 }
 
+type ChatMode = "agent" | "ask" | "plan";
+
+interface AvailableModel {
+  id: string;
+  name: string;
+  provider: "openai" | "anthropic";
+}
+
 function ChatInner({ workspaceId, token }: { workspaceId: string; token: string | null }) {
   const setNavbarSlot = useNavbarSlot();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -507,18 +585,25 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
   const [showPanel, setShowPanel] = useState(false);
   const [showEvents, setShowEvents] = useState(true);
   const [inputValue, setInputValue] = useState("");
+  const [chatMode, setChatMode] = useState<ChatMode>("agent");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ images: { url: string; filename?: string }[]; index: number } | null>(null);
   const [lastSentImages, setLastSentImages] = useState<PendingImage[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
+  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingImageIdsRef = useRef<string[]>([]);
   const imageIdsToSendRef = useRef<string[]>([]);
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
 
   const { events, streamStatus, streamError, dismissEvent, clearEvents, reconnect } =
     useWorkspaceEvents(workspaceId, token);
@@ -527,6 +612,10 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
   tokenRef.current = token;
   const conversationIdRef = useRef(activeConversationId);
   conversationIdRef.current = activeConversationId;
+  const chatModeRef = useRef(chatMode);
+  chatModeRef.current = chatMode;
+  const selectedModelRef = useRef(selectedModel);
+  selectedModelRef.current = selectedModel;
 
   const transport = useMemo(
     () =>
@@ -543,10 +632,12 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
           return res;
         },
         prepareSendMessagesRequest({ messages, body, headers, api, credentials }) {
-          const simplified = messages.map((m) => ({
-            role: m.role,
-            content: getTextFromParts(m.parts as { type: string; text?: string }[]),
-          }));
+          const simplified = messages
+            .map((m) => ({
+              role: m.role,
+              content: getTextFromParts(m.parts as { type: string; text?: string }[]),
+            }))
+            .filter((m) => m.content.trim());
           const imageIds = imageIdsToSendRef.current.length > 0 ? [...imageIdsToSendRef.current] : undefined;
           imageIdsToSendRef.current = [];
           return {
@@ -556,6 +647,8 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
             body: {
               ...body,
               messages: simplified,
+              mode: chatModeRef.current,
+              model: selectedModelRef.current ?? undefined,
               conversationId: conversationIdRef.current ?? undefined,
               imageIds,
             },
@@ -598,6 +691,24 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
   }, [fetchConversations]);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${apiUrl}/v1/workspaces/${workspaceId}/chat/models`,
+          { headers: tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : undefined },
+        );
+        if (res.ok && !cancelled) {
+          const data = await res.json() as { models: AvailableModel[]; default: string | null };
+          setAvailableModels(data.models);
+          if (data.default) setSelectedModel(data.default);
+        }
+      } catch { /* network error */ }
+    })();
+    return () => { cancelled = true; };
+  }, [workspaceId]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -611,6 +722,28 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  useEffect(() => {
+    if (!modeDropdownOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(e.target as Node)) {
+        setModeDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [modeDropdownOpen]);
+
+  useEffect(() => {
+    if (!modelDropdownOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
+        setModelDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [modelDropdownOpen]);
 
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -743,21 +876,20 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
     [uploadImage],
   );
 
-    const handleSend = useCallback(
-    (text?: string) => {
+  const handleSend = useCallback(
+    async (text?: string) => {
       const msg = (text ?? inputValue).trim();
       if (!msg || isLoading) return;
       setInputValue("");
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
-      // Snapshot image IDs so the transport can read them asynchronously
       imageIdsToSendRef.current = [...pendingImageIdsRef.current];
       const sentImages = [...pendingImages].filter((p) => !p.uploading);
-      sendMessage({ text: msg });
       setLastSentImages(sentImages);
       setPendingImages([]);
       pendingImageIdsRef.current = [];
+      await sendMessage({ text: msg });
     },
     [inputValue, isLoading, sendMessage, pendingImages],
   );
@@ -908,12 +1040,8 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                <path d="M2 12h20" />
-              </svg>
+            <div className="mb-4">
+              <OrLoader size={36} filled />
             </div>
             <h3 className="mb-6 text-2xl font-semibold text-base-text">
               What can I help with?
@@ -925,7 +1053,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
                   key={s.label}
                   type="button"
                   onClick={() => handleSend(s.label)}
-                  className="rounded-full border border-base-border bg-surface px-4 py-2.5 text-sm text-base-text-muted transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-base-text"
+                  className="rounded-full bg-surface px-4 py-2.5 text-sm text-base-text-muted transition-all hover:bg-primary/5 hover:text-base-text"
                 >
                   {s.label}
                 </button>
@@ -961,12 +1089,14 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
                 );
               }
 
+              const isLastMsg = msgIdx === messages.length - 1;
               return (
                 <div key={msg.id} className="group/msg mb-5">
                   <div className="text-sm text-base-text">
                     <MessageParts
                       parts={allParts}
                       isUser={false}
+                      streaming={isLastMsg && isStreaming}
                       onImageClick={openLightbox}
                     />
                   </div>
@@ -974,13 +1104,20 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
                 </div>
               );
             })}
-            {isLoading && messages[messages.length - 1]?.role === "user" && (
-              <div className="mb-5">
-                <div className="flex items-center gap-1.5 py-2">
-                  <span className="h-2 w-2 rounded-full bg-base-text-muted/60 animate-bounce [animation-delay:0ms]" />
-                  <span className="h-2 w-2 rounded-full bg-base-text-muted/60 animate-bounce [animation-delay:150ms]" />
-                  <span className="h-2 w-2 rounded-full bg-base-text-muted/60 animate-bounce [animation-delay:300ms]" />
+            {isLoading && (() => {
+              const last = messages[messages.length - 1];
+              const lastParts = (last?.parts as MessagePart[]) ?? [];
+              const hasTextContent = last?.role === "assistant" &&
+                lastParts.some((p) => p.type === "text" && p.text);
+              const hasToolOrReasoning = last?.role === "assistant" &&
+                lastParts.some((p) => p.type === "reasoning" || p.type === "tool-invocation" || isToolPart(p));
+              return !hasTextContent && !hasToolOrReasoning;
+            })() && (
+              <div className="mb-5 flex items-center gap-2 py-2">
+                <div className="relative flex h-5 w-5 items-center justify-center">
+                  <div className="absolute h-5 w-5 animate-spin rounded-full border-2 border-base-text-muted/20 border-t-primary" />
                 </div>
+                <span className="text-sm text-base-text-muted animate-pulse">Thinking...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -1004,24 +1141,9 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
       )}
 
       {/* Input */}
-      <div className="px-4 pb-4 pt-2">
-        {/* Stop button */}
-        {isStreaming && (
-          <div className="mx-auto mb-2 flex max-w-3xl justify-center">
-            <button
-              type="button"
-              onClick={() => stop()}
-              className="flex items-center gap-1.5 rounded-full border border-base-border bg-surface px-3.5 py-1.5 text-xs font-medium text-base-text-muted shadow-sm transition-colors hover:bg-primary/5 hover:text-base-text"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
-              Stop generating
-            </button>
-          </div>
-        )}
-        <div
-          className={`mx-auto max-w-3xl rounded-3xl border bg-surface shadow-sm transition-colors focus-within:border-primary/50 ${
+      <div className="px-4 pb-3 pt-1.5">
+          <div
+          className={`mx-auto max-w-3xl rounded-2xl border bg-surface shadow-sm transition-colors focus-within:border-primary/50 ${
             dragOver ? "border-primary bg-primary/5" : "border-base-border"
           }`}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -1079,7 +1201,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
           )}
 
           {/* Textarea + buttons */}
-          <div className="flex items-end gap-2 px-4 py-3">
+          <div className="flex items-center gap-2 px-3 py-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -1094,10 +1216,10 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="mb-0.5 shrink-0 rounded-full p-1.5 text-base-text-muted transition-colors hover:bg-primary/5 hover:text-base-text"
+              className="shrink-0 rounded-full p-1.5 text-base-text-muted transition-colors hover:bg-primary/5 hover:text-base-text"
               title="Attach image"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -1127,22 +1249,164 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
                   }
                 }
               }}
-              placeholder="Ask anything"
+              placeholder={chatMode === "ask" ? "Ask a question..." : chatMode === "plan" ? "Describe what you want to plan..." : "Ask anything"}
               rows={1}
               className="flex-1 resize-none bg-transparent py-1 text-sm text-base-text placeholder:text-base-text-muted focus:outline-none"
               style={{ maxHeight: "160px" }}
             />
-            <button
-              type="button"
-              onClick={() => handleSend()}
-              disabled={isLoading || !inputValue.trim()}
-              className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="19" x2="12" y2="5" />
-                <polyline points="5 12 12 5 19 12" />
-              </svg>
-            </button>
+            {isLoading ? (
+              <button
+                type="button"
+                onClick={() => stop()}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-500 transition-colors hover:bg-red-600 active:scale-95"
+                title="Stop generating"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--color-bg)">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleSend()}
+                disabled={!inputValue.trim()}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary transition-colors hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+                title="Send message"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-bg)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5" />
+                  <polyline points="5 12 12 5 19 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Mode selector */}
+          <div className="flex items-center gap-1.5 px-3 pb-2">
+            <div className="relative" ref={modeDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setModeDropdownOpen((v) => !v)}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-base-text-muted transition-colors hover:bg-primary/5 hover:text-base-text"
+              >
+                {chatMode === "agent" && <span className="text-sm font-bold leading-none">&#8734;</span>}
+                {chatMode === "plan" && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+                    <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+                  </svg>
+                )}
+                {chatMode === "ask" && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                  </svg>
+                )}
+                <span className="font-medium">{chatMode === "agent" ? "Agent" : chatMode === "ask" ? "Ask" : "Plan"}</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {modeDropdownOpen && (
+                <div className="absolute bottom-full left-0 mb-1 min-w-[150px] rounded-lg border border-base-border bg-surface py-1 shadow-lg">
+                  {([
+                    { mode: "agent" as const, label: "Agent" },
+                    { mode: "plan" as const, label: "Plan" },
+                    { mode: "ask" as const, label: "Ask" },
+                  ]).map(({ mode: m, label }) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => { setChatMode(m); setModeDropdownOpen(false); }}
+                      className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-[13px] transition-colors hover:bg-primary/5 ${
+                        chatMode === m ? "text-base-text" : "text-base-text-muted"
+                      }`}
+                    >
+                      {m === "agent" && <span className="w-4 text-center text-sm font-bold leading-none">&#8734;</span>}
+                      {m === "plan" && (
+                        <svg className="w-4" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+                          <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+                        </svg>
+                      )}
+                      {m === "ask" && (
+                        <svg className="w-4" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2" />
+                        </svg>
+                      )}
+                      <span>{label}</span>
+                      {chatMode === m && (
+                        <svg className="ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {availableModels.length > 0 && (
+              <div className="relative" ref={modelDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setModelDropdownOpen((v) => !v)}
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-base-text-muted transition-colors hover:bg-primary/5 hover:text-base-text"
+                >
+                  <span className="max-w-[180px] truncate font-medium">
+                    {availableModels.find((m) => m.id === selectedModel)?.name ?? selectedModel ?? "Model"}
+                  </span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {modelDropdownOpen && (
+                  <div className="absolute bottom-full left-0 mb-1 max-h-[280px] min-w-[220px] overflow-y-auto rounded-lg border border-base-border bg-surface py-1 shadow-lg">
+                    {(["openai", "anthropic"] as const)
+                      .filter((p) => availableModels.some((m) => m.provider === p))
+                      .map((provider) => (
+                        <div key={provider}>
+                          <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-base-text-muted">
+                            {provider === "openai" ? "OpenAI" : "Anthropic"}
+                          </div>
+                          {availableModels
+                            .filter((m) => m.provider === provider)
+                            .map((m) => (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => { setSelectedModel(m.id); setModelDropdownOpen(false); }}
+                                className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-[13px] transition-colors hover:bg-primary/5 ${
+                                  selectedModel === m.id ? "text-base-text" : "text-base-text-muted"
+                                }`}
+                              >
+                                <span>{m.name}</span>
+                                {selectedModel === m.id && (
+                                  <svg className="ml-auto shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                )}
+                              </button>
+                            ))}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {chatMode !== "agent" && (
+              <span className={`text-xs ${
+                chatMode === "ask"
+                  ? "text-blue-500 dark:text-blue-400"
+                  : "text-amber-500 dark:text-amber-400"
+              }`}>
+                {chatMode === "ask"
+                  ? "Ask mode — read-only, no actions will be taken"
+                  : "Plan mode — planning only, no actions will be taken"}
+              </span>
+            )}
           </div>
         </div>
       </div>

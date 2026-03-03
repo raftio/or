@@ -2,6 +2,7 @@ import type { TicketProvider } from "./contract.js";
 import { createLinearTicketProvider } from "./linear.js";
 import { createJiraTicketProvider } from "./jira.js";
 import { createGitHubIssuesProvider } from "./github-issues.js";
+import { createGitLabIssuesProvider } from "./gitlab.js";
 import { createStubTicketProvider } from "./stub.js";
 import { getTicketProvider, getLinearApiKey } from "../../config.js";
 import { query } from "../../db/index.js";
@@ -48,6 +49,13 @@ export async function createTicketProviderForWorkspace(
         const access_token = row.config.access_token?.trim();
         if (owner && repo && access_token) {
           return createGitHubIssuesProvider(owner, repo, access_token);
+        }
+      }
+      if (row.provider === "gitlab") {
+        const project_id = row.config.project_id?.trim();
+        const access_token = row.config.access_token?.trim();
+        if (project_id && access_token) {
+          return createGitLabIssuesProvider(project_id, access_token);
         }
       }
     }

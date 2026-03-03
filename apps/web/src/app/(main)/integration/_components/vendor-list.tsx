@@ -39,7 +39,7 @@ export function VendorList({
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-base-text-muted">
             Connected
           </h2>
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {connectedVendors.map((v) => {
               const integration = getIntegration(v, integrations);
               return (
@@ -59,7 +59,7 @@ export function VendorList({
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-base-text-muted">
           Available
         </h2>
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {vendors.map((v) => (
             <v.cardComponent
               key={v.id}

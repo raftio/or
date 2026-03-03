@@ -6,6 +6,7 @@ import { requireWorkspaceAdmin, requireWorkspaceMember } from "../../middleware/
 import { testJiraConnection } from "../../adapters/ticket/jira.js";
 import { testGitHubConnection } from "../../adapters/ticket/github-issues.js";
 import { testNotionConnection } from "../../adapters/document/notion.js";
+import { testGitLabConnection } from "../../adapters/ticket/gitlab.js";
 import { testGitHubCodeConnection, createGitHubCodeProvider } from "../../adapters/code/github.js";
 import { CodeIndexer } from "../../services/code-indexer/indexer.js";
 import { vectorStore, embeddingProvider } from "../../tools/index.js";
@@ -255,6 +256,186 @@ app.post("/workspaces/:id/integrations/github/test", async (c) => {
 
   try {
     const user = await testGitHubConnection(parsed.data.access_token);
+    return c.json({ ok: true, user });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Connection failed";
+    return c.json({ ok: false, error: msg }, 400);
+  }
+});
+
+// ── Upsert GitLab Issues configuration ───────────────────────────────
+
+const GitLabIssuesConfigSchema = z.object({
+  project_id: z.string().min(1, "Project ID is required"),
+  access_token: z.string().min(1, "Access token is required"),
+});
+
+app.put("/workspaces/:id/integrations/gitlab", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("id");
+
+  const check = await requireWorkspaceAdmin(workspaceId, userId);
+  if (!check.ok) return c.json({ error: check.error }, check.status);
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = GitLabIssuesConfigSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Validation failed", details: parsed.error.flatten() }, 400);
+  }
+
+  const config = {
+    project_id: parsed.data.project_id,
+    access_token: parsed.data.access_token,
+  };
+
+  const result = await query<{
+    id: string;
+    provider: string;
+    created_at: string;
+    updated_at: string;
+  }>(
+    `INSERT INTO workspace_integrations (workspace_id, provider, config)
+     VALUES ($1, 'gitlab', $2::jsonb)
+     ON CONFLICT (workspace_id, provider)
+     DO UPDATE SET config = $2::jsonb, updated_at = now()
+     RETURNING id, provider, created_at, updated_at`,
+    [workspaceId, JSON.stringify(config)],
+  );
+
+  const row = result.rows[0];
+  return c.json({
+    integration: {
+      ...row,
+      config: { ...config, access_token: maskToken(config.access_token) },
+    },
+  }, 200);
+});
+
+// ── Delete (disconnect) GitLab Issues ────────────────────────────────
+
+app.delete("/workspaces/:id/integrations/gitlab", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("id");
+
+  const check = await requireWorkspaceAdmin(workspaceId, userId);
+  if (!check.ok) return c.json({ error: check.error }, check.status);
+
+  await query(
+    `DELETE FROM workspace_integrations WHERE workspace_id = $1 AND provider = 'gitlab'`,
+    [workspaceId],
+  );
+
+  return c.json({ deleted: true });
+});
+
+// ── Test GitLab connection ───────────────────────────────────────────
+
+app.post("/workspaces/:id/integrations/gitlab/test", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("id");
+
+  const check = await requireWorkspaceMember(workspaceId, userId);
+  if (!check.ok) return c.json({ error: check.error }, check.status);
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = z.object({ access_token: z.string().min(1) }).safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Validation failed", details: parsed.error.flatten() }, 400);
+  }
+
+  try {
+    const user = await testGitLabConnection(parsed.data.access_token);
+    return c.json({ ok: true, user });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Connection failed";
+    return c.json({ ok: false, error: msg }, 400);
+  }
+});
+
+// ── Upsert GitLab Code configuration ─────────────────────────────────
+
+const GitLabCodeConfigSchema = z.object({
+  project_id: z.string().min(1, "Project ID is required"),
+  access_token: z.string().min(1, "Access token is required"),
+  branch: z.string().default("main"),
+});
+
+app.put("/workspaces/:id/integrations/gitlab-code", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("id");
+
+  const check = await requireWorkspaceAdmin(workspaceId, userId);
+  if (!check.ok) return c.json({ error: check.error }, check.status);
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = GitLabCodeConfigSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Validation failed", details: parsed.error.flatten() }, 400);
+  }
+
+  const config = {
+    project_id: parsed.data.project_id,
+    access_token: parsed.data.access_token,
+    branch: parsed.data.branch,
+  };
+
+  const result = await query<{
+    id: string;
+    provider: string;
+    created_at: string;
+    updated_at: string;
+  }>(
+    `INSERT INTO workspace_integrations (workspace_id, provider, config)
+     VALUES ($1, 'gitlab_code', $2::jsonb)
+     ON CONFLICT (workspace_id, provider)
+     DO UPDATE SET config = $2::jsonb, updated_at = now()
+     RETURNING id, provider, created_at, updated_at`,
+    [workspaceId, JSON.stringify(config)],
+  );
+
+  const row = result.rows[0];
+  return c.json({
+    integration: {
+      ...row,
+      config: { ...config, access_token: maskToken(config.access_token) },
+    },
+  }, 200);
+});
+
+// ── Delete (disconnect) GitLab Code ──────────────────────────────────
+
+app.delete("/workspaces/:id/integrations/gitlab-code", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("id");
+
+  const check = await requireWorkspaceAdmin(workspaceId, userId);
+  if (!check.ok) return c.json({ error: check.error }, check.status);
+
+  await query(
+    `DELETE FROM workspace_integrations WHERE workspace_id = $1 AND provider = 'gitlab_code'`,
+    [workspaceId],
+  );
+
+  return c.json({ deleted: true });
+});
+
+// ── Test GitLab Code connection ──────────────────────────────────────
+
+app.post("/workspaces/:id/integrations/gitlab-code/test", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("id");
+
+  const check = await requireWorkspaceMember(workspaceId, userId);
+  if (!check.ok) return c.json({ error: check.error }, check.status);
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = z.object({ access_token: z.string().min(1) }).safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Validation failed", details: parsed.error.flatten() }, 400);
+  }
+
+  try {
+    const user = await testGitLabConnection(parsed.data.access_token);
     return c.json({ ok: true, user });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Connection failed";

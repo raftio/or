@@ -3,12 +3,16 @@ import type { ComponentType } from "react";
 import { JiraCard } from "./jira-card";
 import { GitHubIssuesCard } from "./github-issues-card";
 import { GitHubCodeCard } from "./github-code-card";
+import { GitLabIssuesCard } from "./gitlab-issues-card";
+import { GitLabCodeCard } from "./gitlab-code-card";
 import { IdeCard } from "./ide-card";
 import { NotionCard } from "./notion-card";
 
 import { JiraForm } from "./jira-form";
 import { GitHubIssuesForm } from "./github-issues-form";
 import { GitHubCodeForm } from "./github-code-form";
+import { GitLabIssuesForm } from "./gitlab-issues-form";
+import { GitLabCodeForm } from "./gitlab-code-form";
 import { IdeSetup } from "./ide-setup";
 import { NotionForm } from "./notion-form";
 
@@ -65,6 +69,15 @@ export const VENDORS: VendorConfig[] = [
         : undefined,
   },
   {
+    id: "gitlab",
+    title: "GitLab Issues",
+    sourceType: "tasks",
+    integrationProvider: "gitlab",
+    cardComponent: GitLabIssuesCard,
+    formComponent: GitLabIssuesForm,
+    describeConnection: (i) => i?.config?.project_id,
+  },
+  {
     id: "notion",
     title: "Notion",
     sourceType: "docs",
@@ -83,6 +96,15 @@ export const VENDORS: VendorConfig[] = [
       i?.config?.owner && i?.config?.repo
         ? `${i.config.owner}/${i.config.repo}`
         : undefined,
+  },
+  {
+    id: "gitlab_code",
+    title: "GitLab Code",
+    sourceType: "code",
+    integrationProvider: "gitlab_code",
+    cardComponent: GitLabCodeCard,
+    formComponent: GitLabCodeForm,
+    describeConnection: (i) => i?.config?.project_id,
   },
   {
     id: "ide",

@@ -60,7 +60,7 @@ export default function IntegrationPage() {
   const FormComponent = currentVendor?.formComponent;
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-12">
+    <div className="mx-auto max-w-6xl px-6 py-12">
       <h1 className="text-3xl font-bold tracking-tight text-base-text">
         Integrations
       </h1>

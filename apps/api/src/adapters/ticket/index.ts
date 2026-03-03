@@ -54,8 +54,9 @@ export async function createTicketProviderForWorkspace(
       if (row.provider === "gitlab") {
         const project_id = row.config.project_id?.trim();
         const access_token = row.config.access_token?.trim();
+        const base_url = row.config.base_url?.trim() || undefined;
         if (project_id && access_token) {
-          return createGitLabIssuesProvider(project_id, access_token);
+          return createGitLabIssuesProvider(project_id, access_token, base_url);
         }
       }
     }

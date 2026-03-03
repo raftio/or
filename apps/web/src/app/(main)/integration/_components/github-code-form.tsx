@@ -10,9 +10,9 @@ interface GitHubCodeIntegration {
   provider: "github_code";
   config: {
     owner: string;
-    repo: string;
+    repos?: string[];
+    repo?: string;
     access_token: string;
-    branch?: string;
   };
   created_at: string;
   updated_at: string;
@@ -28,12 +28,28 @@ interface IndexStatus {
   completed_at: string | null;
 }
 
+interface RepoInfo {
+  name: string;
+  full_name: string;
+  default_branch: string;
+  private: boolean;
+  archived: boolean;
+  description: string | null;
+}
+
 interface GitHubCodeFormProps {
   workspaceId: string;
   token: string;
   integration: GitHubCodeIntegration | null;
   isAdmin: boolean;
   onUpdate: () => void;
+}
+
+function getConfiguredRepos(integration: GitHubCodeIntegration | null): string[] {
+  if (!integration) return [];
+  if (Array.isArray(integration.config.repos)) return integration.config.repos;
+  if (integration.config.repo) return [integration.config.repo];
+  return [];
 }
 
 export function GitHubCodeForm({
@@ -47,18 +63,23 @@ export function GitHubCodeForm({
   const [testing, setTesting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [indexing, setIndexing] = useState(false);
+  const [loadingRepos, setLoadingRepos] = useState(false);
 
   const [owner, setOwner] = useState(integration?.config.owner ?? "");
-  const [repo, setRepo] = useState(integration?.config.repo ?? "");
   const [accessToken, setAccessToken] = useState("");
-  const [branch, setBranch] = useState(integration?.config.branch ?? "main");
+  const [selectedRepos, setSelectedRepos] = useState<Set<string>>(
+    () => new Set(getConfiguredRepos(integration)),
+  );
+
+  const [availableRepos, setAvailableRepos] = useState<RepoInfo[]>([]);
+  const [repoFilter, setRepoFilter] = useState("");
 
   const [error, setError] = useState("");
   const [testResult, setTestResult] = useState<{
     ok: boolean;
     message: string;
   } | null>(null);
-  const [indexStatus, setIndexStatus] = useState<IndexStatus | null>(null);
+  const [indexStatuses, setIndexStatuses] = useState<IndexStatus[]>([]);
 
   const headers = useCallback(
     () => ({
@@ -78,7 +99,7 @@ export function GitHubCodeForm({
       const res = await fetch(`${base}/status`, { headers: headers() });
       if (!res.ok) return;
       const data = await res.json();
-      setIndexStatus(data.indexes?.[0] ?? null);
+      setIndexStatuses(data.indexes ?? []);
     } catch {
       /* ignore */
     }
@@ -88,13 +109,40 @@ export function GitHubCodeForm({
     fetchStatus();
   }, [fetchStatus]);
 
-  // ── Poll while indexing ───────────────────────────────────────────────
+  // ── Poll while any repo is indexing ─────────────────────────────────
 
   useEffect(() => {
-    if (indexStatus?.status !== "indexing") return;
+    if (!indexStatuses.some((s) => s.status === "indexing")) return;
     const id = setInterval(fetchStatus, 3000);
     return () => clearInterval(id);
-  }, [indexStatus?.status, fetchStatus]);
+  }, [indexStatuses, fetchStatus]);
+
+  // ── Load available repos ────────────────────────────────────────────
+
+  const handleLoadRepos = useCallback(async () => {
+    setLoadingRepos(true);
+    setError("");
+    try {
+      const effectiveToken = accessToken || undefined;
+      const params = new URLSearchParams();
+      if (owner) params.set("owner", owner);
+      if (effectiveToken) params.set("access_token", effectiveToken);
+
+      const res = await fetch(`${base}/repos?${params.toString()}`, {
+        headers: headers(),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to load repositories");
+        return;
+      }
+      setAvailableRepos(data.repos ?? []);
+    } catch {
+      setError("Network error");
+    } finally {
+      setLoadingRepos(false);
+    }
+  }, [base, owner, accessToken, headers]);
 
   // ── Handlers ──────────────────────────────────────────────────────────
 
@@ -108,7 +156,6 @@ export function GitHubCodeForm({
         headers: headers(),
         body: JSON.stringify({
           owner,
-          repo,
           access_token: accessToken || undefined,
         }),
       });
@@ -116,7 +163,7 @@ export function GitHubCodeForm({
       if (data.ok) {
         setTestResult({
           ok: true,
-          message: `Connected to ${data.repo?.fullName ?? "repository"} (${data.repo?.defaultBranch ?? "–"})`,
+          message: `Connected to ${data.owner} (${data.repoCount} repos accessible)`,
         });
       } else {
         setTestResult({ ok: false, message: data.error || "Connection failed" });
@@ -126,14 +173,21 @@ export function GitHubCodeForm({
     } finally {
       setTesting(false);
     }
-  }, [base, owner, repo, accessToken, headers]);
+  }, [base, owner, accessToken, headers]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
     setError("");
     setTestResult(null);
     try {
-      const body: Record<string, unknown> = { owner, repo, branch };
+      const repos = Array.from(selectedRepos);
+      if (repos.length === 0) {
+        setError("Select at least one repository");
+        setSaving(false);
+        return;
+      }
+
+      const body: Record<string, unknown> = { owner, repos };
 
       if (accessToken) {
         body.access_token = accessToken;
@@ -164,13 +218,14 @@ export function GitHubCodeForm({
     } finally {
       setSaving(false);
     }
-  }, [base, owner, repo, branch, accessToken, integration, headers, onUpdate]);
+  }, [base, owner, selectedRepos, accessToken, integration, headers, onUpdate]);
 
-  const handleIndex = useCallback(async () => {
+  const handleIndex = useCallback(async (force?: boolean) => {
     setIndexing(true);
     setError("");
     try {
-      const res = await fetch(`${base}/index`, {
+      const url = force ? `${base}/index?force=true` : `${base}/index`;
+      const res = await fetch(url, {
         method: "POST",
         headers: headers(),
       });
@@ -179,15 +234,18 @@ export function GitHubCodeForm({
         setError(data.error || "Failed to start indexing");
         return;
       }
-      setIndexStatus({
-        repo: data.repo,
-        status: "indexing",
-        total_files: 0,
-        indexed_files: 0,
-        error: null,
-        started_at: new Date().toISOString(),
-        completed_at: null,
-      });
+      const repos: string[] = data.repos ?? [];
+      setIndexStatuses(
+        repos.map((repo) => ({
+          repo,
+          status: "indexing",
+          total_files: 0,
+          indexed_files: 0,
+          error: null,
+          started_at: new Date().toISOString(),
+          completed_at: null,
+        })),
+      );
     } catch {
       setError("Network error");
     } finally {
@@ -214,6 +272,37 @@ export function GitHubCodeForm({
     }
   }, [base, headers, onUpdate]);
 
+  const toggleRepo = useCallback((name: string) => {
+    setSelectedRepos((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    const filtered = filteredRepos;
+    const allSelected = filtered.every((r) => selectedRepos.has(r.name));
+    setSelectedRepos((prev) => {
+      const next = new Set(prev);
+      for (const r of filtered) {
+        if (allSelected) next.delete(r.name);
+        else next.add(r.name);
+      }
+      return next;
+    });
+  }, [availableRepos, selectedRepos, repoFilter]);
+
+  const filteredRepos = availableRepos.filter(
+    (r) =>
+      !repoFilter ||
+      r.name.toLowerCase().includes(repoFilter.toLowerCase()) ||
+      r.description?.toLowerCase().includes(repoFilter.toLowerCase()),
+  );
+
+  const anyIndexing = indexStatuses.some((s) => s.status === "indexing");
+
   // ── Render ────────────────────────────────────────────────────────────
 
   return (
@@ -223,13 +312,6 @@ export function GitHubCodeForm({
         placeholder="e.g. raftio"
         value={owner}
         onChange={setOwner}
-        disabled={!isAdmin}
-      />
-      <Field
-        label="Repository"
-        placeholder="e.g. or"
-        value={repo}
-        onChange={setRepo}
         disabled={!isAdmin}
       />
       <Field
@@ -244,18 +326,95 @@ export function GitHubCodeForm({
         onChange={setAccessToken}
         disabled={!isAdmin}
       />
-      <Field
-        label="Branch"
-        placeholder="main"
-        value={branch}
-        onChange={setBranch}
-        disabled={!isAdmin}
-      />
       <p className="text-xs text-base-text-muted">
         The token needs read access to repository contents.
         Classic PAT: <code className="text-base-text">repo</code> scope.
         Fine-grained: <code className="text-base-text">Contents</code> read permission.
       </p>
+
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={handleLoadRepos}
+          disabled={loadingRepos || !owner || (!accessToken && !integration)}
+          className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {loadingRepos ? "Loading..." : "Load Repositories"}
+        </button>
+      )}
+
+      {availableRepos.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-base-text">
+              Repositories ({selectedRepos.size} selected)
+            </span>
+            <button
+              type="button"
+              onClick={toggleAll}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              {filteredRepos.every((r) => selectedRepos.has(r.name))
+                ? "Deselect All"
+                : "Select All"}
+            </button>
+          </div>
+
+          {availableRepos.length > 8 && (
+            <input
+              type="text"
+              placeholder="Filter repos..."
+              value={repoFilter}
+              onChange={(e) => setRepoFilter(e.target.value)}
+              className="w-full rounded-lg border border-base-border bg-base px-3 py-1.5 text-sm text-base-text placeholder:text-base-text-muted focus:border-primary focus:outline-none"
+            />
+          )}
+
+          <div className="max-h-60 overflow-y-auto rounded-lg border border-base-border bg-base">
+            {filteredRepos.map((repo) => (
+              <label
+                key={repo.name}
+                className="flex cursor-pointer items-center gap-3 border-b border-base-border/50 px-3 py-2 last:border-b-0 hover:bg-primary/5"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedRepos.has(repo.name)}
+                  onChange={() => toggleRepo(repo.name)}
+                  disabled={!isAdmin}
+                  className="h-4 w-4 rounded border-base-border text-primary accent-primary"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-base-text truncate">
+                      {repo.name}
+                    </span>
+                    {repo.private && (
+                      <span className="shrink-0 rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-600">
+                        private
+                      </span>
+                    )}
+                    {repo.archived && (
+                      <span className="shrink-0 rounded bg-gray-500/10 px-1.5 py-0.5 text-[10px] font-medium text-base-text-muted">
+                        archived
+                      </span>
+                    )}
+                  </div>
+                  {repo.description && (
+                    <p className="truncate text-xs text-base-text-muted">
+                      {repo.description}
+                    </p>
+                  )}
+                </div>
+              </label>
+            ))}
+            {filteredRepos.length === 0 && (
+              <p className="px-3 py-4 text-center text-sm text-base-text-muted">
+                No repositories match the filter.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 
@@ -270,7 +429,7 @@ export function GitHubCodeForm({
           <button
             type="button"
             onClick={handleTest}
-            disabled={testing || !accessToken || !owner || !repo}
+            disabled={testing || !accessToken || !owner}
             className="rounded-lg border border-base-border bg-surface px-4 py-2 text-sm font-medium text-base-text transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {testing ? "Testing..." : "Test Connection"}
@@ -278,7 +437,7 @@ export function GitHubCodeForm({
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving || !owner || !repo}
+            disabled={saving || !owner || selectedRepos.size === 0}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-base transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             {saving ? "Saving..." : integration ? "Update" : "Connect"}
@@ -287,13 +446,19 @@ export function GitHubCodeForm({
             <>
               <button
                 type="button"
-                onClick={handleIndex}
-                disabled={indexing || indexStatus?.status === "indexing"}
+                onClick={() => handleIndex()}
+                disabled={indexing || anyIndexing}
                 className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {indexing || indexStatus?.status === "indexing"
-                  ? "Indexing..."
-                  : "Index Now"}
+                {indexing || anyIndexing ? "Indexing..." : "Index Now"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleIndex(true)}
+                disabled={indexing || anyIndexing}
+                className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-2 text-sm font-medium text-amber-500 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {indexing || anyIndexing ? "Indexing..." : "Force Index"}
               </button>
               <button
                 type="button"
@@ -314,38 +479,48 @@ export function GitHubCodeForm({
         </p>
       )}
 
-      {indexStatus && (
-        <div className="mt-2 rounded-lg border border-base-border bg-base p-4">
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-block h-2 w-2 rounded-full ${
-                indexStatus.status === "ready"
-                  ? "bg-green-500"
-                  : indexStatus.status === "indexing"
-                    ? "animate-pulse bg-yellow-500"
-                    : indexStatus.status === "failed"
-                      ? "bg-red-500"
-                      : "bg-gray-400"
-              }`}
-            />
-            <span className="text-sm font-medium text-base-text capitalize">
-              {indexStatus.status}
-            </span>
-            {indexStatus.status === "indexing" && indexStatus.total_files > 0 && (
-              <span className="text-xs text-base-text-muted">
-                ({indexStatus.indexed_files} / {indexStatus.total_files} files)
-              </span>
-            )}
-          </div>
-          {indexStatus.status === "ready" && indexStatus.completed_at && (
-            <p className="mt-1 text-xs text-base-text-muted">
-              Completed {new Date(indexStatus.completed_at).toLocaleString()}
-              {" — "}{indexStatus.indexed_files} files indexed
-            </p>
-          )}
-          {indexStatus.status === "failed" && indexStatus.error && (
-            <p className="mt-1 text-xs text-red-400">{indexStatus.error}</p>
-          )}
+      {indexStatuses.length > 0 && (
+        <div className="mt-2 space-y-2">
+          {indexStatuses.map((idx) => (
+            <div
+              key={idx.repo}
+              className="rounded-lg border border-base-border bg-base p-3"
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${
+                    idx.status === "ready"
+                      ? "bg-green-500"
+                      : idx.status === "indexing"
+                        ? "animate-pulse bg-yellow-500"
+                        : idx.status === "failed"
+                          ? "bg-red-500"
+                          : "bg-gray-400"
+                  }`}
+                />
+                <span className="text-sm font-medium text-base-text">
+                  {idx.repo}
+                </span>
+                <span className="text-xs capitalize text-base-text-muted">
+                  {idx.status}
+                </span>
+                {idx.status === "indexing" && idx.total_files > 0 && (
+                  <span className="text-xs text-base-text-muted">
+                    ({idx.indexed_files} / {idx.total_files} files)
+                  </span>
+                )}
+              </div>
+              {idx.status === "ready" && idx.completed_at && (
+                <p className="mt-1 text-xs text-base-text-muted">
+                  Completed {new Date(idx.completed_at).toLocaleString()}
+                  {" — "}{idx.indexed_files} files indexed
+                </p>
+              )}
+              {idx.status === "failed" && idx.error && (
+                <p className="mt-1 text-xs text-red-400">{idx.error}</p>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -6,11 +6,13 @@
  */
 import type { CodeProvider } from "../../adapters/code/contract.js";
 import type { EmbeddingProvider, VectorEntry, VectorStore } from "../vector/contract.js";
-import { chunkCode, type ChunkOptions } from "./chunker.js";
+import { chunkCode, type CodeChunk, type ChunkOptions } from "./chunker.js";
 import { chunkTypeScript } from "./chunker-ast.js";
+import { chunkGo } from "./chunker-ast-go.js";
 import { vectorQuery as query } from "../../db/index.js";
 
 const TS_JS_RE = /\.[tj]sx?$/;
+const GO_RE = /\.go$/;
 
 export interface IndexResult {
   totalFiles: number;
@@ -54,7 +56,7 @@ export class CodeIndexer {
     private options: IndexerOptions = {},
   ) {}
 
-  async indexRepository(workspaceId: string, repo: string, commitSha?: string): Promise<IndexResult> {
+  async indexRepository(workspaceId: string, repo: string, commitSha?: string, force?: boolean): Promise<IndexResult> {
     const batchSize = this.options.batchSize ?? DEFAULT_BATCH;
     const result: IndexResult = {
       totalFiles: 0,
@@ -71,7 +73,12 @@ export class CodeIndexer {
     });
 
     try {
-      const existingFiles = await this.vectorStore.getIndexedFiles(workspaceId, repo);
+      if (force) {
+        await this.vectorStore.deleteByRepo(workspaceId, repo);
+      }
+      const existingFiles = force
+        ? new Map<string, string>()
+        : await this.vectorStore.getIndexedFiles(workspaceId, repo);
       const seenPaths = new Set<string>();
 
       let pendingEntries: Omit<VectorEntry, "embedding">[] = [];
@@ -107,9 +114,11 @@ export class CodeIndexer {
           await this.vectorStore.deleteByFile(workspaceId, repo, file.path);
         }
 
-        const chunks = TS_JS_RE.test(file.path)
+        const chunks: CodeChunk[] = TS_JS_RE.test(file.path)
           ? chunkTypeScript(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
-          : chunkCode(file.path, file.content, file.language, this.options.chunkOptions);
+          : GO_RE.test(file.path)
+            ? await chunkGo(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
+            : chunkCode(file.path, file.content, file.language, this.options.chunkOptions);
         result.indexedFiles++;
 
         for (let ci = 0; ci < chunks.length; ci++) {

@@ -32,7 +32,20 @@ interface GitHubContentResponse {
 
 interface GitHubRepoResponse {
   full_name: string;
+  name: string;
   default_branch: string;
+  private: boolean;
+  archived: boolean;
+  description: string | null;
+}
+
+export interface GitHubRepoSummary {
+  name: string;
+  full_name: string;
+  default_branch: string;
+  private: boolean;
+  archived: boolean;
+  description: string | null;
 }
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -196,4 +209,68 @@ export async function testGitHubCodeConnection(
 
   const data = (await res.json()) as GitHubRepoResponse;
   return { fullName: data.full_name, defaultBranch: data.default_branch };
+}
+
+/**
+ * List repositories accessible to the token for a given owner (user or org).
+ * Tries the org endpoint first, falls back to the user endpoint.
+ */
+export async function listGitHubRepos(
+  owner: string,
+  token: string,
+): Promise<GitHubRepoSummary[]> {
+  const headers = makeHeaders(token);
+  const repos: GitHubRepoSummary[] = [];
+  const perPage = 100;
+
+  async function fetchPage(url: string): Promise<GitHubRepoResponse[]> {
+    const res = await fetch(url, { headers });
+    if (!res.ok) return [];
+    return (await res.json()) as GitHubRepoResponse[];
+  }
+
+  // Try org endpoint first, fall back to user endpoint
+  const baseUrls = [
+    `${GITHUB_API}/orgs/${encodeURIComponent(owner)}/repos`,
+    `${GITHUB_API}/users/${encodeURIComponent(owner)}/repos`,
+  ];
+
+  for (const baseUrl of baseUrls) {
+    for (let page = 1; ; page++) {
+      const url = `${baseUrl}?per_page=${perPage}&page=${page}&sort=full_name`;
+      const batch = await fetchPage(url);
+      if (batch.length === 0 && page === 1 && baseUrl.includes("/orgs/")) break;
+      for (const r of batch) {
+        repos.push({
+          name: r.name,
+          full_name: r.full_name,
+          default_branch: r.default_branch,
+          private: r.private,
+          archived: r.archived,
+          description: r.description,
+        });
+      }
+      if (batch.length < perPage) break;
+    }
+    if (repos.length > 0) break;
+  }
+
+  return repos;
+}
+
+/**
+ * Get the default branch for a specific repo.
+ */
+export async function getRepoDefaultBranch(
+  owner: string,
+  repo: string,
+  token: string,
+): Promise<string> {
+  const res = await fetch(
+    `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+    { headers: makeHeaders(token) },
+  );
+  if (!res.ok) return "main";
+  const data = (await res.json()) as GitHubRepoResponse;
+  return data.default_branch;
 }

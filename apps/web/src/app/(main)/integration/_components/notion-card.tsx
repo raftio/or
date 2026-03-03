@@ -53,9 +53,11 @@ export function NotionCard({ connected, onClick, detail }: VendorCardProps) {
             </span>
           )}
         </div>
-        <p className="mt-1 text-sm leading-relaxed text-base-text-muted">
-          Fetch documentation and specs from Notion pages for context synthesis.
-        </p>
+        {!connected && (
+          <p className="mt-1 text-sm leading-relaxed text-base-text-muted">
+            Fetch documentation and specs from Notion pages for context synthesis.
+          </p>
+        )}
       </div>
     </button>
   );

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { useAuth } from "@/components/auth-provider";
 import { IntegrationDrawer } from "./_components/integration-drawer";
-import { VENDORS } from "./_components/vendor-registry";
+import { VENDORS, type IndexStatus } from "./_components/vendor-registry";
 import { VendorList } from "./_components/vendor-list";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -16,6 +16,7 @@ export default function IntegrationPage() {
   const [loading, setLoading] = useState(true);
   const [integrations, setIntegrations] = useState<Record<string, any>>({});
   const [openVendor, setOpenVendor] = useState<string | null>(null);
+  const [indexStatusMap, setIndexStatusMap] = useState<Record<string, IndexStatus[]>>({});
 
   const fetchIntegrations = useCallback(async () => {
     if (!activeWorkspace || !token) return;
@@ -48,6 +49,49 @@ export default function IntegrationPage() {
     fetchIntegrations();
   }, [fetchIntegrations]);
 
+  const fetchAllIndexStatuses = useCallback(async () => {
+    if (!activeWorkspace || !token) return;
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+    const base = `${apiUrl}/v1/workspaces/${activeWorkspace.id}/integrations`;
+
+    const vendorsWithStatus = VENDORS.filter(
+      (v) => v.statusEndpoint && v.integrationProvider && integrations[v.integrationProvider],
+    );
+
+    const results = await Promise.allSettled(
+      vendorsWithStatus.map(async (v) => {
+        const res = await fetch(`${base}/${v.statusEndpoint}/status`, { headers });
+        if (!res.ok) return { vendorId: v.id, indexes: [] as IndexStatus[] };
+        const data = await res.json();
+        return { vendorId: v.id, indexes: (data.indexes ?? []) as IndexStatus[] };
+      }),
+    );
+
+    const next: Record<string, IndexStatus[]> = {};
+    for (const r of results) {
+      if (r.status === "fulfilled") {
+        next[r.value.vendorId] = r.value.indexes;
+      }
+    }
+    setIndexStatusMap(next);
+  }, [activeWorkspace, token, integrations]);
+
+  useEffect(() => {
+    fetchAllIndexStatuses();
+  }, [fetchAllIndexStatuses]);
+
+  useEffect(() => {
+    const anyIndexing = Object.values(indexStatusMap).some((statuses) =>
+      statuses.some((s) => s.status === "indexing"),
+    );
+    if (!anyIndexing) return;
+    const id = setInterval(fetchAllIndexStatuses, 5000);
+    return () => clearInterval(id);
+  }, [indexStatusMap, fetchAllIndexStatuses]);
+
   const handleUpdate = useCallback(() => {
     setOpenVendor(null);
     fetchIntegrations();
@@ -75,6 +119,7 @@ export default function IntegrationPage() {
         <VendorList
           vendors={VENDORS}
           integrations={integrations}
+          indexStatusMap={indexStatusMap}
           onVendorClick={setOpenVendor}
         />
       )}

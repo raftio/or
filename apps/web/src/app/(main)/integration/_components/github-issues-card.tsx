@@ -35,9 +35,11 @@ export function GitHubIssuesCard({ connected, onClick, detail }: VendorCardProps
             </span>
           )}
         </div>
-        <p className="mt-1 text-sm leading-relaxed text-base-text-muted">
-          Import issues from a GitHub repository for context and traceability.
-        </p>
+        {!connected && (
+          <p className="mt-1 text-sm leading-relaxed text-base-text-muted">
+            Import issues from a GitHub repository for context and traceability.
+          </p>
+        )}
       </div>
     </button>
   );

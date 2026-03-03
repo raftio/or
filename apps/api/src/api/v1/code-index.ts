@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { query, vectorQuery } from "../../db/index.js";
 import { authMiddleware } from "../../middleware/auth.js";
-import { createGitHubCodeProvider } from "../../adapters/code/github.js";
+import { createGitHubCodeProvider, getRepoDefaultBranch } from "../../adapters/code/github.js";
 import { CodeIndexer } from "../../services/code-indexer/indexer.js";
 import { vectorStore, embeddingProvider } from "../../tools/index.js";
 
@@ -29,7 +29,7 @@ app.post("/code-index/sync", async (c) => {
 
   const result = await query<{
     workspace_id: string;
-    config: Record<string, string>;
+    config: Record<string, unknown>;
   }>(
     `SELECT workspace_id, config FROM workspace_integrations
      WHERE workspace_id = $1 AND provider = 'github_code'`,
@@ -44,39 +44,51 @@ app.post("/code-index/sync", async (c) => {
   let skipped = 0;
 
   for (const row of result.rows) {
-    const owner = row.config.owner?.trim();
-    const repo = row.config.repo?.trim();
-    const token = row.config.access_token?.trim();
-    const branch = row.config.branch?.trim() || "main";
+    const cfg = row.config;
+    const owner = (typeof cfg.owner === "string" ? cfg.owner : "").trim();
+    const token = (typeof cfg.access_token === "string" ? cfg.access_token : "").trim();
 
-    if (!owner || !repo || !token) continue;
-
-    const repoFullName = `${owner}/${repo}`;
-    const codeProvider = createGitHubCodeProvider(owner, repo, token, branch);
-
-    if (codeProvider.getHeadSha) {
-      const headSha = await codeProvider.getHeadSha();
-      if (headSha) {
-        const statusRow = await vectorQuery<{ last_commit_sha: string | null }>(
-          `SELECT last_commit_sha FROM workspace_code_index_status
-           WHERE workspace_id = $1 AND repo = $2 AND status = 'ready'`,
-          [row.workspace_id, repoFullName],
-        );
-        if (statusRow.rows[0]?.last_commit_sha === headSha) {
-          skipped++;
-          continue;
-        }
-      }
+    // Support both legacy single-repo and new multi-repo config
+    let repos: string[];
+    if (Array.isArray(cfg.repos)) {
+      repos = cfg.repos.filter((r): r is string => typeof r === "string" && r.trim().length > 0);
+    } else if (typeof cfg.repo === "string" && cfg.repo.trim()) {
+      repos = [cfg.repo.trim()];
+    } else {
+      continue;
     }
 
-    const indexer = new CodeIndexer(codeProvider, vectorStore, embeddingProvider);
-    const headSha = await codeProvider.getHeadSha?.() ?? undefined;
+    if (!owner || !token) continue;
 
-    indexer.indexRepository(row.workspace_id, repoFullName, headSha).catch((err) => {
-      console.error(`[code-index/sync] ${repoFullName} failed:`, err);
-    });
+    for (const repo of repos) {
+      const repoFullName = `${owner}/${repo}`;
+      const branch = await getRepoDefaultBranch(owner, repo, token);
+      const codeProvider = createGitHubCodeProvider(owner, repo, token, branch);
 
-    triggered++;
+      if (codeProvider.getHeadSha) {
+        const headSha = await codeProvider.getHeadSha();
+        if (headSha) {
+          const statusRow = await vectorQuery<{ last_commit_sha: string | null }>(
+            `SELECT last_commit_sha FROM workspace_code_index_status
+             WHERE workspace_id = $1 AND repo = $2 AND status = 'ready'`,
+            [row.workspace_id, repoFullName],
+          );
+          if (statusRow.rows[0]?.last_commit_sha === headSha) {
+            skipped++;
+            continue;
+          }
+        }
+      }
+
+      const indexer = new CodeIndexer(codeProvider, vectorStore, embeddingProvider);
+      const headSha = await codeProvider.getHeadSha?.() ?? undefined;
+
+      indexer.indexRepository(row.workspace_id, repoFullName, headSha).catch((err) => {
+        console.error(`[code-index/sync] ${repoFullName} failed:`, err);
+      });
+
+      triggered++;
+    }
   }
 
   return c.json({ triggered, skipped });

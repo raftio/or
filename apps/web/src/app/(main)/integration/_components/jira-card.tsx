@@ -38,9 +38,11 @@ export function JiraCard({ connected, onClick, detail }: VendorCardProps) {
             </span>
           )}
         </div>
-        <p className="mt-1 text-sm leading-relaxed text-base-text-muted">
-          Sync tickets and documentation sources for full traceability.
-        </p>
+        {!connected && (
+          <p className="mt-1 text-sm leading-relaxed text-base-text-muted">
+            Sync tickets and documentation sources for full traceability.
+          </p>
+        )}
       </div>
     </button>
   );

@@ -26,11 +26,23 @@ export interface IntegrationFormProps {
 
 export type SourceType = "tasks" | "docs" | "code" | "evidence" | "cicd";
 
+export interface IndexStatus {
+  repo: string;
+  status: "pending" | "indexing" | "ready" | "failed";
+  total_files: number;
+  indexed_files: number;
+  error: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
 export interface VendorCardProps {
   connected: boolean;
   onClick: () => void;
   /** Short human-readable summary of the connection (e.g. "raftio/or"). */
   detail?: string;
+  /** Index statuses for code integrations, shown on the card. */
+  indexStatuses?: IndexStatus[];
 }
 
 export interface VendorConfig {
@@ -44,6 +56,8 @@ export interface VendorConfig {
   formComponent?: ComponentType<any>;
   /** Extract a displayable connection summary from the stored integration config. */
   describeConnection?: (integration: any) => string | undefined;
+  /** API path segment for fetching index status (e.g. "github-code"). */
+  statusEndpoint?: string;
 }
 
 export const VENDORS: VendorConfig[] = [
@@ -92,10 +106,19 @@ export const VENDORS: VendorConfig[] = [
     integrationProvider: "github_code",
     cardComponent: GitHubCodeCard,
     formComponent: GitHubCodeForm,
-    describeConnection: (i) =>
-      i?.config?.owner && i?.config?.repo
-        ? `${i.config.owner}/${i.config.repo}`
-        : undefined,
+    describeConnection: (i) => {
+      const owner = i?.config?.owner;
+      if (!owner) return undefined;
+      const repos: unknown[] = Array.isArray(i.config.repos)
+        ? i.config.repos
+        : i.config.repo
+          ? [i.config.repo]
+          : [];
+      if (repos.length === 0) return owner;
+      if (repos.length === 1) return `${owner}/${repos[0]}`;
+      return `${owner} (${repos.length} repos)`;
+    },
+    statusEndpoint: "github-code",
   },
   {
     id: "gitlab_code",
@@ -104,7 +127,18 @@ export const VENDORS: VendorConfig[] = [
     integrationProvider: "gitlab_code",
     cardComponent: GitLabCodeCard,
     formComponent: GitLabCodeForm,
-    describeConnection: (i) => i?.config?.project_id,
+    describeConnection: (i) => {
+      const group = i?.config?.group;
+      const projects: unknown[] = Array.isArray(i?.config?.projects)
+        ? i.config.projects
+        : i?.config?.project_id
+          ? [i.config.project_id]
+          : [];
+      if (projects.length === 0) return group || undefined;
+      if (projects.length === 1) return String(projects[0]);
+      return `${group || "gitlab"} (${projects.length} projects)`;
+    },
+    statusEndpoint: "gitlab-code",
   },
   {
     id: "ide",

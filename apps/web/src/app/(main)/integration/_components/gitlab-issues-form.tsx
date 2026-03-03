@@ -8,7 +8,7 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 export interface GitLabIssuesIntegration {
   id: string;
   provider: "gitlab";
-  config: { project_id: string; access_token: string };
+  config: { project_id: string; access_token: string; base_url?: string };
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +32,7 @@ export function GitLabIssuesForm({
   const [testing, setTesting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const [baseUrl, setBaseUrl] = useState(integration?.config.base_url ?? "");
   const [projectId, setProjectId] = useState(integration?.config.project_id ?? "");
   const [accessToken, setAccessToken] = useState("");
 
@@ -61,6 +62,7 @@ export function GitLabIssuesForm({
           headers: headers(),
           body: JSON.stringify({
             access_token: accessToken || undefined,
+            base_url: baseUrl || undefined,
           }),
         },
       );
@@ -89,6 +91,7 @@ export function GitLabIssuesForm({
     setTestResult(null);
     try {
       const body: Record<string, string> = { project_id: projectId };
+      if (baseUrl) body.base_url = baseUrl;
       if (accessToken) {
         body.access_token = accessToken;
       } else if (integration) {
@@ -147,6 +150,13 @@ export function GitLabIssuesForm({
 
   return (
     <div className="space-y-4">
+      <Field
+        label="GitLab URL"
+        placeholder="https://gitlab.com"
+        value={baseUrl}
+        onChange={setBaseUrl}
+        disabled={!isAdmin}
+      />
       <Field
         label="Project ID"
         placeholder="e.g. my-group/my-project or 12345"

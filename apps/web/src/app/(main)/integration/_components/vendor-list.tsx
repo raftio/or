@@ -1,10 +1,11 @@
-import type { VendorConfig } from "./vendor-registry";
+import type { VendorConfig, IndexStatus } from "./vendor-registry";
 import { CicdCard } from "./cicd-card";
 import { GitProviderCard } from "./git-provider-card";
 
 interface VendorListProps {
   vendors: VendorConfig[];
   integrations: Record<string, any>;
+  indexStatusMap?: Record<string, IndexStatus[]>;
   onVendorClick: (vendorId: string) => void;
 }
 
@@ -28,6 +29,7 @@ function getDetail(
 export function VendorList({
   vendors,
   integrations,
+  indexStatusMap,
   onVendorClick,
 }: VendorListProps) {
   const connectedVendors = vendors.filter((v) => getIntegration(v, integrations));
@@ -47,6 +49,7 @@ export function VendorList({
                   key={v.id}
                   connected
                   detail={getDetail(v, integration)}
+                  indexStatuses={indexStatusMap?.[v.id]}
                   onClick={() => onVendorClick(v.id)}
                 />
               );

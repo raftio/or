@@ -27,6 +27,8 @@
     "openai": "^6.25.0",
     "pg": "^8.13.0",
     "pgvector": "^0.2.1",
+    "tree-sitter-go": "^0.25.0",
+    "web-tree-sitter": "^0.26.6",
     "zod": "^3.23.0"
   },
   "devDependencies": {

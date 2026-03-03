@@ -1,6 +1,6 @@
 import type { VendorCardProps } from "./vendor-registry";
 
-export function GitHubIssuesCard({ connected, onClick, detail }: VendorCardProps) {
+export function GitHubIssuesCard({ connected, onClick, vendorTitle, detail }: VendorCardProps) {
   return (
     <button
       type="button"
@@ -24,21 +24,24 @@ export function GitHubIssuesCard({ connected, onClick, detail }: VendorCardProps
           />
         </svg>
       </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-base-text">
-            GitHub Issues{detail && <span className="ml-1 font-normal text-base-text-muted">· {detail}</span>}
-          </h2>
-          {connected && (
-            <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-500">
+      <div className="min-w-0 flex-1">
+        {connected ? (
+          <>
+            <h2 className="text-lg font-semibold text-base-text truncate">
+              {detail || vendorTitle || "GitHub Issues"}
+            </h2>
+            <p className="text-sm text-base-text-muted">{vendorTitle || "GitHub Issues"}</p>
+            <span className="mt-1.5 inline-block rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-500">
               Connected
             </span>
-          )}
-        </div>
-        {!connected && (
-          <p className="mt-1 text-sm leading-relaxed text-base-text-muted">
-            Import issues from a GitHub repository for context and traceability.
-          </p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-lg font-semibold text-base-text">GitHub Issues</h2>
+            <p className="mt-1 text-sm leading-relaxed text-base-text-muted">
+              Import issues from a GitHub repository for context and traceability.
+            </p>
+          </>
         )}
       </div>
     </button>

@@ -68,6 +68,9 @@ importers:
       pgvector:
         specifier: ^0.2.1
         version: 0.2.1
+      proto-parser:
+        specifier: ^0.0.9
+        version: 0.0.9
       tree-sitter-go:
         specifier: ^0.25.0
         version: 0.25.0
@@ -2134,6 +2137,9 @@ packages:
 
   property-information@7.1.0:
     resolution: {integrity: sha512-TwEZ+X+yCJmYfL7TPUOcvBZ4QfoT5YenQiJuX//0th53DE6w0xxLEtfK3iyryQFddXuvkIk51EEgrJQ0WJkOmQ==}
+
+  proto-parser@0.0.9:
+    resolution: {integrity: sha512-1rFsUdeZ1bKOGfhy1Pw2RWNiAPj7luwBIFeVSJQXZA2G3sh4a24sHtNgnYfisdi4YvAe7TsDNq1xREos+Iwfww==}
 
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
@@ -4485,6 +4491,8 @@ snapshots:
       react-is: 17.0.2
 
   property-information@7.1.0: {}
+
+  proto-parser@0.0.9: {}
 
   punycode@2.3.1: {}
 

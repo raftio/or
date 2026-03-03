@@ -3,13 +3,20 @@
  * Auth: Basic (email:apiToken) per Jira Cloud convention.
  */
 import type { TicketProvider } from "./contract.js";
-import type { AcceptanceCriterionDto, TicketDto } from "./types.js";
+import type { AcceptanceCriterionDto, SubTaskDto, TicketDto } from "./types.js";
+
+interface JiraSubTask {
+  id: string;
+  key: string;
+  fields: { summary: string; status?: { name: string } };
+}
 
 interface JiraIssueFields {
   summary: string;
   description: unknown;
   status?: { name: string };
   updated?: string;
+  subtasks?: JiraSubTask[];
 }
 
 interface JiraIssue {
@@ -59,6 +66,16 @@ function parseDescriptionForAC(description: string): AcceptanceCriterionDto[] {
   return acs;
 }
 
+function mapSubTasks(raw?: JiraSubTask[]): SubTaskDto[] | undefined {
+  if (!raw?.length) return undefined;
+  return raw.map((s) => ({
+    id: s.id,
+    key: s.key,
+    title: s.fields.summary ?? "",
+    status: s.fields.status?.name ?? "Unknown",
+  }));
+}
+
 function mapIssueToDto(issue: JiraIssue): TicketDto {
   const descriptionText =
     typeof issue.fields.description === "string"
@@ -74,6 +91,7 @@ function mapIssueToDto(issue: JiraIssue): TicketDto {
     description: descriptionText,
     status: issue.fields.status?.name ?? "Unknown",
     acceptance_criteria: acs.length ? acs : undefined,
+    subtasks: mapSubTasks(issue.fields.subtasks),
     links: [],
     updated_at: issue.fields.updated,
   };
@@ -93,11 +111,13 @@ export function createJiraTicketProvider(
     "Content-Type": "application/json",
   };
 
+  const issueFields = "summary,description,status,updated,subtasks";
+
   return {
     async getTicket(id: string): Promise<TicketDto | null> {
       try {
         const res = await fetch(
-          `${origin}/rest/api/3/issue/${encodeURIComponent(id)}?fields=summary,description,status,updated`,
+          `${origin}/rest/api/3/issue/${encodeURIComponent(id)}?fields=${issueFields}`,
           { headers },
         );
         if (!res.ok) return null;
@@ -116,7 +136,7 @@ export function createJiraTicketProvider(
 
       try {
         const res = await fetch(
-          `${origin}/rest/api/3/search?jql=${encodeURIComponent(jql)}&maxResults=50&fields=summary,description,status,updated`,
+          `${origin}/rest/api/3/search?jql=${encodeURIComponent(jql)}&maxResults=50&fields=${issueFields}`,
           { headers },
         );
         if (!res.ok) return [];
@@ -125,6 +145,27 @@ export function createJiraTicketProvider(
       } catch {
         return [];
       }
+    },
+
+    async addComment(ticketId: string, body: string) {
+      const adf = {
+        version: 1,
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: body }] }],
+      };
+
+      const res = await fetch(
+        `${origin}/rest/api/3/issue/${encodeURIComponent(ticketId)}/comment`,
+        { method: "POST", headers, body: JSON.stringify({ body: adf }) },
+      );
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Failed to add comment (${res.status}): ${text.slice(0, 200)}`);
+      }
+
+      const data = (await res.json()) as { id: string };
+      return { id: data.id };
     },
   };
 }
@@ -162,4 +203,49 @@ export async function testJiraConnection(
     emailAddress: string;
   };
   return { displayName: data.displayName, emailAddress: data.emailAddress };
+}
+
+export interface JiraProjectInfo {
+  id: string;
+  key: string;
+  name: string;
+  projectTypeKey: string;
+  style: string;
+}
+
+/**
+ * List all Jira projects accessible with the given credentials.
+ * Uses GET /rest/api/3/project (paginated, returns up to 200).
+ */
+export async function listJiraProjects(
+  baseUrl: string,
+  email: string,
+  apiToken: string,
+): Promise<JiraProjectInfo[]> {
+  const origin = baseUrl.replace(/\/+$/, "");
+  const auth = Buffer.from(`${email}:${apiToken}`).toString("base64");
+
+  const res = await fetch(
+    `${origin}/rest/api/3/project?maxResults=200&orderBy=name`,
+    {
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Failed to list projects: ${res.status} ${body.slice(0, 200)}`);
+  }
+
+  const data = (await res.json()) as JiraProjectInfo[];
+  return data.map((p) => ({
+    id: p.id,
+    key: p.key,
+    name: p.name,
+    projectTypeKey: p.projectTypeKey,
+    style: p.style,
+  }));
 }

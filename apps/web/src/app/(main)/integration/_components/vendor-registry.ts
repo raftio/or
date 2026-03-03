@@ -39,7 +39,9 @@ export interface IndexStatus {
 export interface VendorCardProps {
   connected: boolean;
   onClick: () => void;
-  /** Short human-readable summary of the connection (e.g. "raftio/or"). */
+  /** Vendor type label (e.g. "Jira Cloud", "GitLab Code"). Passed automatically by VendorList. */
+  vendorTitle?: string;
+  /** Short human-readable summary of the connection scope (e.g. "raftio/or", "All projects"). */
   detail?: string;
   /** Index statuses for code integrations, shown on the card. */
   indexStatuses?: IndexStatus[];
@@ -68,7 +70,12 @@ export const VENDORS: VendorConfig[] = [
     integrationProvider: "jira",
     cardComponent: JiraCard,
     formComponent: JiraForm,
-    describeConnection: (i) => i?.config?.base_url,
+    describeConnection: (i) => {
+      const url = i?.config?.base_url as string | undefined;
+      const site = url?.replace(/^https?:\/\//, "").replace(/\.atlassian\.net\/?$/, "");
+      const scope = (i?.config?.project_key as string) || "All projects";
+      return site ? `${site} / ${scope}` : scope;
+    },
   },
   {
     id: "github",
@@ -108,15 +115,14 @@ export const VENDORS: VendorConfig[] = [
     formComponent: GitHubCodeForm,
     describeConnection: (i) => {
       const owner = i?.config?.owner;
-      if (!owner) return undefined;
-      const repos: unknown[] = Array.isArray(i.config.repos)
+      const repos: unknown[] = Array.isArray(i?.config?.repos)
         ? i.config.repos
-        : i.config.repo
+        : i?.config?.repo
           ? [i.config.repo]
           : [];
-      if (repos.length === 0) return owner;
       if (repos.length === 1) return `${owner}/${repos[0]}`;
-      return `${owner} (${repos.length} repos)`;
+      if (repos.length > 1) return "Multiple repositories";
+      return owner || undefined;
     },
     statusEndpoint: "github-code",
   },
@@ -128,15 +134,14 @@ export const VENDORS: VendorConfig[] = [
     cardComponent: GitLabCodeCard,
     formComponent: GitLabCodeForm,
     describeConnection: (i) => {
-      const group = i?.config?.group;
       const projects: unknown[] = Array.isArray(i?.config?.projects)
         ? i.config.projects
         : i?.config?.project_id
           ? [i.config.project_id]
           : [];
-      if (projects.length === 0) return group || undefined;
       if (projects.length === 1) return String(projects[0]);
-      return `${group || "gitlab"} (${projects.length} projects)`;
+      if (projects.length > 1) return "Multiple projects";
+      return i?.config?.group || undefined;
     },
     statusEndpoint: "gitlab-code",
   },

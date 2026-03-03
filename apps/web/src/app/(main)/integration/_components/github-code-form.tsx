@@ -220,11 +220,15 @@ export function GitHubCodeForm({
     }
   }, [base, owner, selectedRepos, accessToken, integration, headers, onUpdate]);
 
-  const handleIndex = useCallback(async (force?: boolean) => {
+  const handleIndex = useCallback(async (force?: boolean, repo?: string) => {
     setIndexing(true);
     setError("");
     try {
-      const url = force ? `${base}/index?force=true` : `${base}/index`;
+      const params = new URLSearchParams();
+      if (force) params.set("force", "true");
+      if (repo) params.set("repo", repo);
+      const qs = params.toString();
+      const url = qs ? `${base}/index?${qs}` : `${base}/index`;
       const res = await fetch(url, {
         method: "POST",
         headers: headers(),
@@ -235,17 +239,27 @@ export function GitHubCodeForm({
         return;
       }
       const repos: string[] = data.repos ?? [];
-      setIndexStatuses(
-        repos.map((repo) => ({
-          repo,
-          status: "indexing",
-          total_files: 0,
-          indexed_files: 0,
-          error: null,
-          started_at: new Date().toISOString(),
-          completed_at: null,
-        })),
-      );
+      if (repo) {
+        setIndexStatuses((prev) =>
+          prev.map((s) =>
+            repos.includes(s.repo)
+              ? { ...s, status: "indexing", error: null, started_at: new Date().toISOString(), completed_at: null }
+              : s,
+          ),
+        );
+      } else {
+        setIndexStatuses(
+          repos.map((r) => ({
+            repo: r,
+            status: "indexing",
+            total_files: 0,
+            indexed_files: 0,
+            error: null,
+            started_at: new Date().toISOString(),
+            completed_at: null,
+          })),
+        );
+      }
     } catch {
       setError("Network error");
     } finally {
@@ -508,6 +522,16 @@ export function GitHubCodeForm({
                   <span className="text-xs text-base-text-muted">
                     ({idx.indexed_files} / {idx.total_files} files)
                   </span>
+                )}
+                {isAdmin && (idx.status === "failed" || idx.status === "ready") && (
+                  <button
+                    type="button"
+                    onClick={() => handleIndex(true, idx.repo)}
+                    disabled={indexing || anyIndexing}
+                    className="ml-auto rounded border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Retry
+                  </button>
                 )}
               </div>
               {idx.status === "ready" && idx.completed_at && (

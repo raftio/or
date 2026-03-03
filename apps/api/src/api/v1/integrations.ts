@@ -3,7 +3,7 @@ import { z } from "zod";
 import { query, vectorQuery } from "../../db/index.js";
 import { authMiddleware } from "../../middleware/auth.js";
 import { requireWorkspaceAdmin, requireWorkspaceMember } from "../../middleware/workspace-auth.js";
-import { testJiraConnection } from "../../adapters/ticket/jira.js";
+import { testJiraConnection, listJiraProjects } from "../../adapters/ticket/jira.js";
 import { testGitHubConnection } from "../../adapters/ticket/github-issues.js";
 import { testNotionConnection } from "../../adapters/document/notion.js";
 import { testGitLabConnection } from "../../adapters/ticket/gitlab.js";
@@ -87,6 +87,7 @@ const JiraConfigSchema = z.object({
     }),
   email: z.string().email("Must be a valid email"),
   api_token: z.string().min(1, "API token is required"),
+  project_key: z.string().optional(),
 });
 
 app.put("/workspaces/:id/integrations/jira", async (c) => {
@@ -102,11 +103,12 @@ app.put("/workspaces/:id/integrations/jira", async (c) => {
     return c.json({ error: "Validation failed", details: parsed.error.flatten() }, 400);
   }
 
-  const config = {
+  const config: Record<string, string> = {
     base_url: parsed.data.base_url.replace(/\/+$/, ""),
     email: parsed.data.email,
     api_token: parsed.data.api_token,
   };
+  if (parsed.data.project_key) config.project_key = parsed.data.project_key;
 
   const result = await query<{
     id: string;
@@ -179,6 +181,46 @@ app.post("/workspaces/:id/integrations/jira/test", async (c) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Connection failed";
     return c.json({ ok: false, error: msg }, 400);
+  }
+});
+
+// ── List Jira projects ──────────────────────────────────────────────
+
+app.get("/workspaces/:id/integrations/jira/projects", async (c) => {
+  const userId = c.get("userId");
+  const workspaceId = c.req.param("id");
+
+  const check = await requireWorkspaceMember(workspaceId, userId);
+  if (!check.ok) return c.json({ error: check.error }, check.status);
+
+  let baseUrl = c.req.query("base_url")?.trim();
+  let email = c.req.query("email")?.trim();
+  let apiToken = c.req.query("api_token")?.trim();
+
+  if (!baseUrl || !email || !apiToken) {
+    const configResult = await query<{ config: Record<string, unknown> }>(
+      `SELECT config FROM workspace_integrations
+       WHERE workspace_id = $1 AND provider = 'jira'`,
+      [workspaceId],
+    );
+    if (configResult.rows.length > 0) {
+      const cfg = configResult.rows[0].config;
+      baseUrl = baseUrl || (typeof cfg.base_url === "string" ? cfg.base_url.trim() : "");
+      email = email || (typeof cfg.email === "string" ? cfg.email.trim() : "");
+      apiToken = apiToken || (typeof cfg.api_token === "string" ? cfg.api_token.trim() : "");
+    }
+  }
+
+  if (!baseUrl || !email || !apiToken) {
+    return c.json({ error: "Credentials required — provide base_url, email, api_token or connect the integration first" }, 400);
+  }
+
+  try {
+    const projects = await listJiraProjects(baseUrl, email, apiToken);
+    return c.json({ projects });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to list projects";
+    return c.json({ error: msg }, 400);
   }
 });
 
@@ -554,6 +596,7 @@ app.post("/workspaces/:id/integrations/gitlab-code/index", async (c) => {
   const userId = c.get("userId");
   const workspaceId = c.req.param("id");
   const force = c.req.query("force") === "true";
+  const onlyRepo = c.req.query("repo")?.trim();
 
   const check = await requireWorkspaceAdmin(workspaceId, userId);
   if (!check.ok) return c.json({ error: check.error }, check.status);
@@ -580,9 +623,17 @@ app.post("/workspaces/:id/integrations/gitlab-code/index", async (c) => {
     return c.json({ error: "Incomplete GitLab Code configuration" }, 400);
   }
 
+  const targetProjects = onlyRepo
+    ? projects.filter((p) => p === onlyRepo)
+    : projects;
+
+  if (targetProjects.length === 0) {
+    return c.json({ error: `Project "${onlyRepo}" not found in configured projects` }, 404);
+  }
+
   const triggered: string[] = [];
 
-  for (const projectId of projects) {
+  for (const projectId of targetProjects) {
     const branch = await getGitLabProjectDefaultBranch(projectId, token, baseUrl);
     const codeProvider = createGitLabCodeProvider(projectId, token, branch, baseUrl);
     const indexer = new CodeIndexer(codeProvider, vectorStore, embeddingProvider);
@@ -892,6 +943,7 @@ app.post("/workspaces/:id/integrations/github-code/index", async (c) => {
   const userId = c.get("userId");
   const workspaceId = c.req.param("id");
   const force = c.req.query("force") === "true";
+  const onlyRepo = c.req.query("repo")?.trim();
 
   const check = await requireWorkspaceAdmin(workspaceId, userId);
   if (!check.ok) return c.json({ error: check.error }, check.status);
@@ -918,9 +970,17 @@ app.post("/workspaces/:id/integrations/github-code/index", async (c) => {
     return c.json({ error: "Incomplete GitHub Code configuration" }, 400);
   }
 
+  const targetRepos = onlyRepo
+    ? repos.filter((r) => `${owner}/${r}` === onlyRepo || r === onlyRepo)
+    : repos;
+
+  if (targetRepos.length === 0) {
+    return c.json({ error: `Repository "${onlyRepo}" not found in configured repos` }, 404);
+  }
+
   const triggered: string[] = [];
 
-  for (const repo of repos) {
+  for (const repo of targetRepos) {
     const repoFullName = `${owner}/${repo}`;
     const branch = await getRepoDefaultBranch(owner, repo, token);
     const codeProvider = createGitHubCodeProvider(owner, repo, token, branch);

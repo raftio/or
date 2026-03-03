@@ -48,6 +48,7 @@ export function VendorList({
                 <v.cardComponent
                   key={v.id}
                   connected
+                  vendorTitle={v.title}
                   detail={getDetail(v, integration)}
                   indexStatuses={indexStatusMap?.[v.id]}
                   onClick={() => onVendorClick(v.id)}

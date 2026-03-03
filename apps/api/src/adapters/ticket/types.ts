@@ -6,6 +6,13 @@ export interface AcceptanceCriterionDto {
   description: string;
 }
 
+export interface SubTaskDto {
+  id: string;
+  key: string;
+  title: string;
+  status: string;
+}
+
 export interface TicketDto {
   id: string;
   key: string;
@@ -13,6 +20,7 @@ export interface TicketDto {
   description: string;
   status: string;
   acceptance_criteria?: AcceptanceCriterionDto[];
+  subtasks?: SubTaskDto[];
   links?: string[];
   updated_at?: string;
 }

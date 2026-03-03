@@ -9,10 +9,66 @@ import type { EmbeddingProvider, VectorEntry, VectorStore } from "../vector/cont
 import { chunkCode, type CodeChunk, type ChunkOptions } from "./chunker.js";
 import { chunkTypeScript } from "./chunker-ast.js";
 import { chunkGo } from "./chunker-ast-go.js";
+import { chunkProto } from "./chunker-proto.js";
+import { chunkCss } from "./chunker-css.js";
+import { chunkHtml } from "./chunker-html.js";
 import { vectorQuery as query } from "../../db/index.js";
 
 const TS_JS_RE = /\.[tj]sx?$/;
 const GO_RE = /\.go$/;
+const PROTO_RE = /\.proto$/;
+const CSS_RE = /\.(css|scss|less)$/;
+const HTML_RE = /\.(html|htm|gohtml|tmpl|hbs|ejs|njk)$/;
+
+const SKIP_EXTENSIONS = new Set([
+  ".pb.go", ".pb.ts",
+  ".lock", ".sum",
+  ".min.js", ".min.css", ".bundle.js", ".chunk.js",
+  ".svg", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp",
+  ".woff", ".woff2", ".ttf", ".eot",
+  ".pdf", ".zip", ".tar", ".gz", ".br",
+  ".map",
+  ".snap",
+  ".csv", ".tsv",
+  ".bot", ".mk", ".patch", ".diff",
+]);
+
+/** Extensions we know how to chunk (AST or structure-aware + generic text). */
+const INDEXABLE_EXTENSIONS = new Set([
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+  ".go",
+  ".proto",
+  ".css", ".scss", ".less",
+  ".html", ".htm", ".gohtml", ".tmpl", ".hbs", ".ejs", ".njk",
+  ".json", ".yaml", ".yml", ".toml",
+  ".md", ".mdx", ".txt", ".rst",
+  ".py", ".rb", ".rs", ".java", ".kt", ".scala", ".c", ".cpp", ".h", ".hpp",
+  ".sh", ".bash", ".zsh", ".fish",
+  ".sql",
+  ".xml",
+  ".env.example", ".gitignore", ".dockerignore",
+  ".dockerfile",
+  ".tf", ".hcl",
+  ".lua", ".php", ".swift", ".dart", ".ex", ".exs", ".erl",
+  ".r", ".R",
+  ".vue", ".svelte", ".astro",
+]);
+
+function shouldSkip(filePath: string): boolean {
+  const lower = filePath.toLowerCase();
+  for (const ext of SKIP_EXTENSIONS) {
+    if (lower.endsWith(ext)) return true;
+  }
+  if (lower.includes("/vendor/") || lower.includes("/node_modules/") || lower.includes("/dist/")) return true;
+  // Skip unknown extensions — only index files we recognise
+  const dotIdx = lower.lastIndexOf(".");
+  if (dotIdx !== -1) {
+    const ext = lower.slice(dotIdx);
+    if (!INDEXABLE_EXTENSIONS.has(ext)) return true;
+  }
+  // No extension (e.g. Makefile, Dockerfile) — allow through for generic chunker
+  return false;
+}
 
 export interface IndexResult {
   totalFiles: number;
@@ -87,22 +143,35 @@ export class CodeIndexer {
       const flush = async () => {
         if (pendingTexts.length === 0) return;
 
-        const embeddings = await this.embeddingProvider.embed(pendingTexts);
-        const entries: VectorEntry[] = pendingEntries.map((e, i) => ({
-          ...e,
-          embedding: embeddings[i],
-        }));
+        try {
+          const embeddings = await this.embeddingProvider.embed(pendingTexts);
+          const entries: VectorEntry[] = pendingEntries.map((e, i) => ({
+            ...e,
+            embedding: embeddings[i],
+          }));
 
-        await this.vectorStore.upsert(entries);
-        result.totalChunks += entries.length;
-
-        pendingEntries = [];
-        pendingTexts = [];
+          await this.vectorStore.upsert(entries);
+          result.totalChunks += entries.length;
+        } catch (err) {
+          const files = [...new Set(pendingEntries.map((e) => e.filePath))];
+          const message = err instanceof Error ? err.message : String(err);
+          throw new Error(
+            `Embedding failed for ${files.length} file(s): ${files.join(", ")} — ${message}`,
+          );
+        } finally {
+          pendingEntries = [];
+          pendingTexts = [];
+        }
       };
 
       for await (const file of this.codeProvider.listFiles()) {
         result.totalFiles++;
         seenPaths.add(file.path);
+
+        if (shouldSkip(file.path)) {
+          result.skippedFiles++;
+          continue;
+        }
 
         if (existingFiles.get(file.path) === file.sha) {
           result.skippedFiles++;
@@ -118,7 +187,13 @@ export class CodeIndexer {
           ? chunkTypeScript(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
           : GO_RE.test(file.path)
             ? await chunkGo(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
-            : chunkCode(file.path, file.content, file.language, this.options.chunkOptions);
+            : PROTO_RE.test(file.path)
+              ? chunkProto(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
+              : CSS_RE.test(file.path)
+                ? chunkCss(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
+                : HTML_RE.test(file.path)
+                  ? chunkHtml(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
+                  : chunkCode(file.path, file.content, file.language, this.options.chunkOptions);
         result.indexedFiles++;
 
         for (let ci = 0; ci < chunks.length; ci++) {

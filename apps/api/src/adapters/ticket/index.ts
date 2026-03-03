@@ -8,7 +8,7 @@ import { getTicketProvider, getLinearApiKey } from "../../config.js";
 import { query } from "../../db/index.js";
 
 export type { TicketProvider } from "./contract.js";
-export type { TicketDto, ListTicketsQuery, AcceptanceCriterionDto, CreateTicketInput } from "./types.js";
+export type { TicketDto, SubTaskDto, ListTicketsQuery, AcceptanceCriterionDto, CreateTicketInput } from "./types.js";
 
 /** Global fallback using env vars (backwards-compatible). */
 export function createTicketProvider(): TicketProvider {

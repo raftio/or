@@ -1,7 +1,7 @@
 import type { VendorCardProps } from "./vendor-registry";
 import { IndexStatusList } from "./index-status-list";
 
-export function GitHubCodeCard({ connected, onClick, detail, indexStatuses }: VendorCardProps) {
+export function GitHubCodeCard({ connected, onClick, vendorTitle, detail, indexStatuses }: VendorCardProps) {
   return (
     <button
       type="button"
@@ -26,22 +26,25 @@ export function GitHubCodeCard({ connected, onClick, detail, indexStatuses }: Ve
         </svg>
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <h2 className="text-lg font-semibold text-base-text">
-            GitHub Code{detail && <span className="ml-1 font-normal text-base-text-muted">· {detail}</span>}
-          </h2>
-          {connected && (
-            <span className="shrink-0 rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-500">
+        {connected ? (
+          <>
+            <h2 className="text-lg font-semibold text-base-text truncate">
+              {detail || vendorTitle || "GitHub Code"}
+            </h2>
+            <p className="text-sm text-base-text-muted">{vendorTitle || "GitHub Code"}</p>
+            <span className="mt-1.5 inline-block rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-500">
               Connected
             </span>
-          )}
-        </div>
-        {!connected && (
-          <p className="mt-1 text-sm leading-relaxed text-base-text-muted">
-            Index repository source code for AI-powered semantic search.
-          </p>
+            <IndexStatusList statuses={indexStatuses} />
+          </>
+        ) : (
+          <>
+            <h2 className="text-lg font-semibold text-base-text">GitHub Code</h2>
+            <p className="mt-1 text-sm leading-relaxed text-base-text-muted">
+              Index repository source code for AI-powered semantic search.
+            </p>
+          </>
         )}
-        <IndexStatusList statuses={indexStatuses} />
       </div>
     </button>
   );

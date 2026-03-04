@@ -153,7 +153,7 @@ export default function BundleDetailPage() {
 
   const updateStatus = useCallback(
     async (newStatus: "active" | "completed") => {
-      if (!activeWorkspace || !token || !bundle) return;
+      if (!activeWorkspace || !token || !bundle || !bundle.ticket_ref) return;
       setStatusUpdating(true);
       setStatusNotification(null);
       try {
@@ -355,7 +355,7 @@ export default function BundleDetailPage() {
             {bundle.status === "active" ? (
               <button
                 onClick={() => updateStatus("completed")}
-                disabled={statusUpdating || rebuilding}
+                disabled={statusUpdating || rebuilding || !bundle.ticket_ref}
                 className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
               >
                 {statusUpdating ? (
@@ -368,7 +368,7 @@ export default function BundleDetailPage() {
             ) : (
               <button
                 onClick={() => updateStatus("active")}
-                disabled={statusUpdating || rebuilding}
+                disabled={statusUpdating || rebuilding || !bundle.ticket_ref}
                 className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-base-border bg-surface px-3 py-1.5 text-sm font-medium text-base-text transition-colors hover:bg-base disabled:opacity-50"
               >
                 {statusUpdating && (

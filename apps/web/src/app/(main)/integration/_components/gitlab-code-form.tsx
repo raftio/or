@@ -67,6 +67,7 @@ export function GitLabCodeForm({
   const [deleting, setDeleting] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const [showIndexMenu, setShowIndexMenu] = useState(false);
 
   const [baseUrl, setBaseUrl] = useState(integration?.config.base_url ?? "");
   const [group, setGroup] = useState(integration?.config.group ?? "");
@@ -355,17 +356,6 @@ export function GitLabCodeForm({
         for read access to repository contents and branches.
       </p>
 
-      {isAdmin && (
-        <button
-          type="button"
-          onClick={handleLoadProjects}
-          disabled={loadingProjects || !group || (!accessToken && !integration)}
-          className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {loadingProjects ? "Loading..." : "Load Projects"}
-        </button>
-      )}
-
       {availableProjects.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -448,7 +438,15 @@ export function GitLabCodeForm({
       )}
 
       {isAdmin && (
-        <div className="flex flex-wrap gap-2 pt-2">
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={handleLoadProjects}
+            disabled={loadingProjects || !group || (!accessToken && !integration)}
+            className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {loadingProjects ? "Loading..." : "Load Projects"}
+          </button>
           <button
             type="button"
             onClick={handleTest}
@@ -457,41 +455,41 @@ export function GitLabCodeForm({
           >
             {testing ? "Testing..." : "Test Connection"}
           </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !group || selectedProjects.size === 0}
-            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-base transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {saving ? "Saving..." : integration ? "Update" : "Connect"}
-          </button>
           {integration && (
-            <>
-              <button
-                type="button"
-                onClick={() => handleIndex()}
-                disabled={indexing || anyIndexing}
-                className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {indexing || anyIndexing ? "Indexing..." : "Index Now"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleIndex(true)}
-                disabled={indexing || anyIndexing}
-                className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {indexing || anyIndexing ? "Indexing..." : "Force Index"}
-              </button>
-              <button
-                type="button"
-                onClick={handleDisconnect}
-                disabled={deleting}
-                className="rounded-md border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {deleting ? "Disconnecting..." : "Disconnect"}
-              </button>
-            </>
+            <div className="relative">
+              <div className="inline-flex rounded-md border border-primary/30 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => handleIndex()}
+                  disabled={indexing || anyIndexing}
+                  className="bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {indexing || anyIndexing ? "Indexing..." : "Index Now"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowIndexMenu((v) => !v)}
+                  disabled={indexing || anyIndexing}
+                  className="border-l border-primary/30 bg-primary/5 px-2 py-1.5 text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+              {showIndexMenu && (
+                <div className="absolute left-0 top-full z-10 mt-1 w-48 rounded-md border border-base-border bg-surface shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => { handleIndex(true); setShowIndexMenu(false); }}
+                    className="w-full rounded-md px-3 py-2 text-left text-xs text-amber-500 transition-colors hover:bg-amber-500/10"
+                  >
+                    Force Re-index
+                    <span className="block text-xs text-base-text-muted">Clear all data and rebuild</span>
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -554,6 +552,29 @@ export function GitLabCodeForm({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="sticky bottom-0 -mx-6 -mb-5 flex gap-2 border-t border-base-border bg-surface px-6 py-4">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !group || selectedProjects.size === 0}
+            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-base transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {saving ? "Saving..." : integration ? "Update" : "Connect"}
+          </button>
+          {integration && (
+            <button
+              type="button"
+              onClick={handleDisconnect}
+              disabled={deleting}
+              className="rounded-md border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {deleting ? "Disconnecting..." : "Disconnect"}
+            </button>
+          )}
         </div>
       )}
     </div>

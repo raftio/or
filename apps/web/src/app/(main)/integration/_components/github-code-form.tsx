@@ -64,6 +64,7 @@ export function GitHubCodeForm({
   const [deleting, setDeleting] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [loadingRepos, setLoadingRepos] = useState(false);
+  const [showIndexMenu, setShowIndexMenu] = useState(false);
 
   const [owner, setOwner] = useState(integration?.config.owner ?? "");
   const [accessToken, setAccessToken] = useState("");
@@ -346,17 +347,6 @@ export function GitHubCodeForm({
         Fine-grained: <code className="text-base-text">Contents</code> read permission.
       </p>
 
-      {isAdmin && (
-        <button
-          type="button"
-          onClick={handleLoadRepos}
-          disabled={loadingRepos || !owner || (!accessToken && !integration)}
-          className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {loadingRepos ? "Loading..." : "Load Repositories"}
-        </button>
-      )}
-
       {availableRepos.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -439,50 +429,58 @@ export function GitHubCodeForm({
       )}
 
       {isAdmin && (
-        <div className="flex flex-wrap gap-3 pt-2">
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={handleLoadRepos}
+            disabled={loadingRepos || !owner || (!accessToken && !integration)}
+            className="whitespace-nowrap rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {loadingRepos ? "Loading..." : "Load Repos"}
+          </button>
           <button
             type="button"
             onClick={handleTest}
             disabled={testing || !accessToken || !owner}
-            className="rounded-lg border border-base-border bg-surface px-4 py-2 text-sm font-medium text-base-text transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-40"
+            className="whitespace-nowrap rounded-md border border-base-border bg-surface px-3 py-1.5 text-xs font-medium text-base-text transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {testing ? "Testing..." : "Test Connection"}
           </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !owner || selectedRepos.size === 0}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-base transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {saving ? "Saving..." : integration ? "Update" : "Connect"}
-          </button>
           {integration && (
-            <>
-              <button
-                type="button"
-                onClick={() => handleIndex()}
-                disabled={indexing || anyIndexing}
-                className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {indexing || anyIndexing ? "Indexing..." : "Index Now"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleIndex(true)}
-                disabled={indexing || anyIndexing}
-                className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-2 text-sm font-medium text-amber-500 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {indexing || anyIndexing ? "Indexing..." : "Force Index"}
-              </button>
-              <button
-                type="button"
-                onClick={handleDisconnect}
-                disabled={deleting}
-                className="rounded-lg border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {deleting ? "Disconnecting..." : "Disconnect"}
-              </button>
-            </>
+            <div className="relative">
+              <div className="inline-flex rounded-md border border-primary/30 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => handleIndex()}
+                  disabled={indexing || anyIndexing}
+                  className="whitespace-nowrap bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {indexing || anyIndexing ? "Indexing..." : "Index Now"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowIndexMenu((v) => !v)}
+                  disabled={indexing || anyIndexing}
+                  className="border-l border-primary/30 bg-primary/5 px-1.5 py-1.5 text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+              {showIndexMenu && (
+                <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-md border border-base-border bg-surface shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => { handleIndex(true); setShowIndexMenu(false); }}
+                    className="w-full rounded-md px-3 py-2 text-left text-xs text-amber-500 transition-colors hover:bg-amber-500/10"
+                  >
+                    Force Re-index
+                    <span className="block text-xs text-base-text-muted">Clear all data and rebuild</span>
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -545,6 +543,29 @@ export function GitHubCodeForm({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="sticky bottom-0 -mx-6 -mb-5 flex gap-3 border-t border-base-border bg-surface px-6 py-4">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !owner || selectedRepos.size === 0}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-base transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {saving ? "Saving..." : integration ? "Update" : "Connect"}
+          </button>
+          {integration && (
+            <button
+              type="button"
+              onClick={handleDisconnect}
+              disabled={deleting}
+              className="rounded-lg border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {deleting ? "Disconnecting..." : "Disconnect"}
+            </button>
+          )}
         </div>
       )}
     </div>

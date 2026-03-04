@@ -638,7 +638,7 @@ app.post("/workspaces/:id/integrations/gitlab-code/index", async (c) => {
     const codeProvider = createGitLabCodeProvider(projectId, token, branch, baseUrl);
     const indexer = new CodeIndexer(codeProvider, vectorStore, embeddingProvider);
 
-    indexer.indexRepository(workspaceId, projectId, undefined, force).catch((err) => {
+    indexer.forceIndexRepository(workspaceId, projectId, undefined).catch((err) => {
       console.error(`[code-indexer] ${projectId} failed:`, err);
     });
     triggered.push(projectId);
@@ -986,7 +986,7 @@ app.post("/workspaces/:id/integrations/github-code/index", async (c) => {
     const codeProvider = createGitHubCodeProvider(owner, repo, token, branch);
     const indexer = new CodeIndexer(codeProvider, vectorStore, embeddingProvider);
 
-    indexer.indexRepository(workspaceId, repoFullName, undefined, force).catch((err) => {
+    indexer.forceIndexRepository(workspaceId, repoFullName, undefined).catch((err) => {
       console.error(`[code-indexer] ${repoFullName} failed:`, err);
     });
     triggered.push(repoFullName);

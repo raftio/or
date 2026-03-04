@@ -17,6 +17,7 @@ import {
   type ChunkOptions,
 } from "@or/code-chunker";
 import { vectorQuery as query } from "../../db/index.js";
+import { CodeFileDto } from "../../adapters/code/index.js";
 
 const TS_JS_RE = /\.[tj]sx?$/;
 const GO_RE = /\.go$/;
@@ -116,7 +117,12 @@ export class CodeIndexer {
     private options: IndexerOptions = {},
   ) {}
 
-  async indexRepository(workspaceId: string, repo: string, commitSha?: string, force?: boolean): Promise<IndexResult> {
+  async forceIndexRepository(workspaceId: string, repo: string, commitSha?: string): Promise<IndexResult> {
+    await this.vectorStore.deleteByRepo(workspaceId, repo);
+    return this.indexRepository(workspaceId, repo, commitSha);
+  }
+
+  async indexRepository(workspaceId: string, repo: string, commitSha?: string): Promise<IndexResult> {
     const batchSize = this.options.batchSize ?? DEFAULT_BATCH;
     const result: IndexResult = {
       totalFiles: 0,
@@ -133,12 +139,7 @@ export class CodeIndexer {
     });
 
     try {
-      if (force) {
-        await this.vectorStore.deleteByRepo(workspaceId, repo);
-      }
-      const existingFiles = force
-        ? new Map<string, string>()
-        : await this.vectorStore.getIndexedFiles(workspaceId, repo);
+      const existingFiles = await this.vectorStore.getIndexedFiles(workspaceId, repo);
       const seenPaths = new Set<string>();
 
       let pendingEntries: Omit<VectorEntry, "embedding">[] = [];
@@ -168,6 +169,27 @@ export class CodeIndexer {
         }
       };
 
+      const chunker = async (file: CodeFileDto): Promise<CodeChunk[]> => {
+        const { path: fp, content, language } = file;
+        const sz = this.options.chunkOptions?.chunkSize;
+        const opts = this.options.chunkOptions;
+
+        switch (true) {
+          case TS_JS_RE.test(fp):
+            return chunkTypeScript(fp, content, language, sz, opts);
+          case GO_RE.test(fp):
+            return chunkGo(fp, content, language, sz, opts);
+          case PROTO_RE.test(fp):
+            return chunkProto(fp, content, language, sz, opts);
+          case CSS_RE.test(fp):
+            return chunkCss(fp, content, language, sz, opts);
+          case HTML_RE.test(fp):
+            return chunkHtml(fp, content, language, sz, opts);
+          default:
+            return chunkCode(fp, content, language, opts);
+        }
+      };
+
       for await (const file of this.codeProvider.listFiles()) {
         result.totalFiles++;
         seenPaths.add(file.path);
@@ -187,17 +209,7 @@ export class CodeIndexer {
           await this.vectorStore.deleteByFile(workspaceId, repo, file.path);
         }
 
-        const chunks: CodeChunk[] = TS_JS_RE.test(file.path)
-          ? chunkTypeScript(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
-          : GO_RE.test(file.path)
-            ? await chunkGo(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
-            : PROTO_RE.test(file.path)
-              ? chunkProto(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
-              : CSS_RE.test(file.path)
-                ? chunkCss(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
-                : HTML_RE.test(file.path)
-                  ? chunkHtml(file.path, file.content, file.language, this.options.chunkOptions?.chunkSize, this.options.chunkOptions)
-                  : chunkCode(file.path, file.content, file.language, this.options.chunkOptions);
+        const chunks: CodeChunk[] = await chunker(file);
         result.indexedFiles++;
 
         for (let ci = 0; ci < chunks.length; ci++) {

@@ -1,5 +1,6 @@
 import { ToolRegistry } from "./registry.js";
 import { bundleTools } from "./bundle-tools.js";
+import { documentTools } from "./document-tools.js";
 import { evidenceTools } from "./evidence-tools.js";
 import { ticketTools } from "./ticket-tools.js";
 import { createMemoryTools } from "./memory-tools.js";
@@ -17,6 +18,7 @@ const embeddingProvider = openAiKey
 
 const registry = new ToolRegistry()
   .register(bundleTools)
+  .register(documentTools)
   .register(evidenceTools)
   .register(ticketTools)
   .register(createMemoryTools(memoryProvider));

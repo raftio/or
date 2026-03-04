@@ -7,6 +7,7 @@ import { GitLabIssuesCard } from "./gitlab-issues-card";
 import { GitLabCodeCard } from "./gitlab-code-card";
 import { IdeCard } from "./ide-card";
 import { NotionCard } from "./notion-card";
+import { ConfluenceCard } from "./confluence-card";
 
 import { JiraForm } from "./jira-form";
 import { GitHubIssuesForm } from "./github-issues-form";
@@ -15,6 +16,7 @@ import { GitLabIssuesForm } from "./gitlab-issues-form";
 import { GitLabCodeForm } from "./gitlab-code-form";
 import { IdeSetup } from "./ide-setup";
 import { NotionForm } from "./notion-form";
+import { ConfluenceForm } from "./confluence-form";
 
 export interface IntegrationFormProps {
   workspaceId: string;
@@ -105,6 +107,18 @@ export const VENDORS: VendorConfig[] = [
     integrationProvider: "notion",
     cardComponent: NotionCard,
     formComponent: NotionForm,
+  },
+  {
+    id: "confluence",
+    title: "Confluence",
+    sourceType: "docs",
+    integrationProvider: "confluence",
+    cardComponent: ConfluenceCard,
+    formComponent: ConfluenceForm,
+    describeConnection: (i) => {
+      const url = i?.config?.base_url as string | undefined;
+      return url?.replace(/^https?:\/\//, "").replace(/\/wiki\/?$/, "").replace(/\.atlassian\.net\/?$/, "") || undefined;
+    },
   },
   {
     id: "github_code",

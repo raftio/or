@@ -1,7 +1,14 @@
 import type { DocumentProvider } from "./contract.js";
 import { createStubDocumentProvider } from "./stub.js";
 import { createNotionDocumentProvider } from "./notion.js";
-import { getDocumentProvider, getNotionApiKey } from "../../config.js";
+import { createConfluenceDocumentProvider } from "./confluence.js";
+import {
+  getDocumentProvider,
+  getNotionApiKey,
+  getConfluenceBaseUrl,
+  getConfluenceEmail,
+  getConfluenceApiToken,
+} from "../../config.js";
 import { query } from "../../db/index.js";
 
 export type { DocumentProvider } from "./contract.js";
@@ -13,6 +20,14 @@ export function createDocumentProvider(): DocumentProvider {
   if (kind === "notion") {
     const key = getNotionApiKey();
     if (key) return createNotionDocumentProvider(key);
+  }
+  if (kind === "confluence") {
+    const baseUrl = getConfluenceBaseUrl();
+    const email = getConfluenceEmail();
+    const token = getConfluenceApiToken();
+    if (baseUrl && email && token) {
+      return createConfluenceDocumentProvider(baseUrl, email, token);
+    }
   }
   return createStubDocumentProvider();
 }
@@ -31,6 +46,14 @@ export async function createDocumentProviderForWorkspace(
       if (row.provider === "notion") {
         const api_token = row.config.api_token?.trim();
         if (api_token) return createNotionDocumentProvider(api_token);
+      }
+      if (row.provider === "confluence") {
+        const base_url = row.config.base_url?.trim();
+        const email = row.config.email?.trim();
+        const api_token = row.config.api_token?.trim();
+        if (base_url && email && api_token) {
+          return createConfluenceDocumentProvider(base_url, email, api_token);
+        }
       }
     }
   } catch {

@@ -41,14 +41,26 @@ export function getJwtSecret(): string {
 
 // ── Document Provider ─────────────────────────────────────────────────────
 
-export function getDocumentProvider(): "stub" | "notion" {
+export function getDocumentProvider(): "stub" | "notion" | "confluence" {
   const v = process.env.DOCUMENT_PROVIDER?.toLowerCase();
-  if (v === "notion") return v;
+  if (v === "notion" || v === "confluence") return v;
   return "stub";
 }
 
 export function getNotionApiKey(): string | undefined {
   return process.env.NOTION_API_KEY;
+}
+
+export function getConfluenceBaseUrl(): string | undefined {
+  return process.env.CONFLUENCE_BASE_URL;
+}
+
+export function getConfluenceEmail(): string | undefined {
+  return process.env.CONFLUENCE_EMAIL;
+}
+
+export function getConfluenceApiToken(): string | undefined {
+  return process.env.CONFLUENCE_API_TOKEN;
 }
 
 // ── AI Decomposer ────────────────────────────────────────────────────────

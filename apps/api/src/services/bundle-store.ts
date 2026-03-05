@@ -1,8 +1,6 @@
 import { query } from "../db/index.js";
 import type { ExecutionBundle, BundleStatus } from "@or/domain";
 
-type BundleStatus = "active" | "completed";
-
 export interface CreateBundleInput {
   workspace_id: string;
   ticket_ref: string;

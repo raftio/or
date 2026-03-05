@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { BundleStatusSchema } from "@or/domain";
+import { BundleStatusSchema, type ExecutionBundle } from "@or/domain";
 import * as bundleStore from "../../services/bundle-store.js";
 import { buildBundle } from "../../services/bundling-engine.js";
 import { createTicketProviderForWorkspace } from "../../adapters/ticket/index.js";
@@ -22,8 +22,6 @@ const app = new Hono<Env>();
 app.use("*", authMiddleware as never);
 
 // ── Schemas ──────────────────────────────────────────────────────────────
-
-const BundleStatusSchema = z.enum(["active", "completed"]);
 
 const CreateBundleBodySchema = z.object({
   ticket_ref: z.string().min(1),
@@ -57,6 +55,27 @@ const CreateBundleBodySchema = z.object({
     .optional(),
 });
 
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+type CreateBundleData = z.infer<typeof CreateBundleBodySchema>;
+
+async function handleCreateBundle(
+  workspaceId: string,
+  data: CreateBundleData,
+): Promise<ExecutionBundle | null> {
+  if (data.build_from_ticket) {
+    return buildBundle({
+      workspace_id: workspaceId,
+      ticket_id: data.ticket_ref,
+      spec_ref: data.spec_ref,
+      use_ai: data.use_ai,
+      embeddingProvider: embeddingProvider ?? undefined,
+      vectorStore,
+    });
+  }
+  return bundleStore.createBundle({ workspace_id: workspaceId, ...data });
+}
+
 // ── Workspace-scoped bundle endpoints ────────────────────────────────────
 
 app.post("/workspaces/:workspaceId/bundles", async (c) => {
@@ -76,27 +95,10 @@ app.post("/workspaces/:workspaceId/bundles", async (c) => {
       400,
     );
   }
-  const data = parsed.data;
-
-  if (data.build_from_ticket) {
-    const bundle = await buildBundle({
-      workspace_id: workspaceId,
-      ticket_id: data.ticket_ref,
-      spec_ref: data.spec_ref,
-      use_ai: data.use_ai,
-      embeddingProvider: embeddingProvider ?? undefined,
-      vectorStore,
-    });
-    if (!bundle) {
-      return c.json({ error: "Ticket not found or bundling failed" }, 404);
-    }
-    return c.json(bundle, 201);
+  const bundle = await handleCreateBundle(workspaceId, parsed.data);
+  if (!bundle) {
+    return c.json({ error: "Ticket not found or bundling failed" }, 404);
   }
-
-  const bundle = await bundleStore.createBundle({
-    workspace_id: workspaceId,
-    ...data,
-  });
   return c.json(bundle, 201);
 });
 
@@ -252,27 +254,10 @@ app.post("/bundles", async (c) => {
       400,
     );
   }
-  const data = parsed.data;
-
-  if (data.build_from_ticket) {
-    const bundle = await buildBundle({
-      workspace_id: workspaceId,
-      ticket_id: data.ticket_ref,
-      spec_ref: data.spec_ref,
-      use_ai: data.use_ai,
-      embeddingProvider: embeddingProvider ?? undefined,
-      vectorStore,
-    });
-    if (!bundle) {
-      return c.json({ error: "Ticket not found or bundling failed" }, 404);
-    }
-    return c.json(bundle, 201);
+  const bundle = await handleCreateBundle(workspaceId, parsed.data);
+  if (!bundle) {
+    return c.json({ error: "Ticket not found or bundling failed" }, 404);
   }
-
-  const bundle = await bundleStore.createBundle({
-    workspace_id: workspaceId,
-    ...data,
-  });
   return c.json(bundle, 201);
 });
 

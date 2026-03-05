@@ -66,17 +66,18 @@ export function createStubChatAgent(): ChatAgent {
           const transform = new TransformStream<Uint8Array, Uint8Array>({
             transform(chunk, controller) {
               const decoded = new TextDecoder().decode(chunk);
-              controller.enqueue(encoder.encode(`0:${JSON.stringify(decoded)}\n`));
+              const deltaPart = JSON.stringify({ type: "text-delta", id: "txt-0", delta: decoded });
+              controller.enqueue(encoder.encode(`data: ${deltaPart}\n\n`));
             },
             flush(controller) {
-              controller.enqueue(encoder.encode(`d:{"finishReason":"stop"}\n`));
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             },
           });
           uiStreamRaw.pipeTo(transform.writable).catch(() => {});
           return new Response(transform.readable, {
             headers: {
-              "Content-Type": "text/plain; charset=utf-8",
-              "Transfer-Encoding": "chunked",
+              "Content-Type": "text/event-stream",
+              "Cache-Control": "no-cache",
             },
           });
         },

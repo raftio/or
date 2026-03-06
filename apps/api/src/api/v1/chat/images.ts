@@ -68,7 +68,7 @@ chatImages.get("/workspaces/:workspaceId/chat/images/:imageId", async (c) => {
     return c.json({ error: "Image not found" }, 404);
   }
 
-  return new Response(image.data, {
+  return new Response(new Uint8Array(image.data), {
     headers: {
       "Content-Type": image.content_type,
       "Content-Length": String(image.size_bytes),

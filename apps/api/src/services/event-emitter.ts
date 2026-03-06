@@ -19,12 +19,12 @@ class WorkspaceEventBus extends EventEmitter {
   }
 
   on(eventName: "event", listener: (event: WorkspaceEvent) => void): this;
-  on(eventName: string | symbol, listener: (...args: unknown[]) => void): this {
+  on(eventName: string | symbol, listener: (...args: any[]) => void): this {
     return super.on(eventName, listener);
   }
 
   off(eventName: "event", listener: (event: WorkspaceEvent) => void): this;
-  off(eventName: string | symbol, listener: (...args: unknown[]) => void): this {
+  off(eventName: string | symbol, listener: (...args: any[]) => void): this {
     return super.off(eventName, listener);
   }
 

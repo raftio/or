@@ -7,7 +7,7 @@ import type { ToolFactory, ToolContext } from "./types.js";
 const echoFactory: ToolFactory = (ctx) => ({
   echo: tool({
     description: "Echo the workspace ID",
-    parameters: z.object({}),
+    inputSchema: z.object({}),
     execute: async () => ({ workspaceId: ctx.workspaceId }),
   }),
 });
@@ -15,7 +15,7 @@ const echoFactory: ToolFactory = (ctx) => ({
 const greetFactory: ToolFactory = (ctx) => ({
   greet: tool({
     description: "Greet the user",
-    parameters: z.object({ name: z.string() }),
+    inputSchema: z.object({ name: z.string() }),
     execute: async ({ name }) => ({ message: `Hello ${name} in ${ctx.workspaceId}` }),
   }),
 });

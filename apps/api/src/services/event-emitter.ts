@@ -19,11 +19,13 @@ class WorkspaceEventBus extends EventEmitter {
   }
 
   on(eventName: "event", listener: (event: WorkspaceEvent) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on(eventName: string | symbol, listener: (...args: any[]) => void): this {
     return super.on(eventName, listener);
   }
 
   off(eventName: "event", listener: (event: WorkspaceEvent) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   off(eventName: string | symbol, listener: (...args: any[]) => void): this {
     return super.off(eventName, listener);
   }

@@ -1,5 +1,5 @@
 import { vectorQuery as query } from "../../db/index.js";
-import type { SearchOptions, SearchResult, VectorEntry, VectorStore } from "./contract.js";
+import type { VectorStore } from "./contract.js";
 
 const BATCH_SIZE = 50;
 

@@ -86,7 +86,7 @@ function storageToSections(html: string): SpecSectionDto[] {
   const headings: Array<{ title: string; index: number }> = [];
   let m: RegExpExecArray | null;
 
-  // eslint-disable-next-line no-cond-assign
+   
   while ((m = HEADING_RE.exec(html)) !== null) {
     headings.push({ title: stripTags(m[2]) || "Untitled Section", index: m.index });
   }

@@ -14,6 +14,7 @@ export default function IntegrationPage() {
   const { token } = useAuth();
 
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [integrations, setIntegrations] = useState<Record<string, any>>({});
   const [openVendor, setOpenVendor] = useState<string | null>(null);
   const [indexStatusMap, setIndexStatusMap] = useState<Record<string, IndexStatus[]>>({});
@@ -33,6 +34,7 @@ export default function IntegrationPage() {
       );
       if (!res.ok) return;
       const data = await res.json();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const map: Record<string, any> = {};
       for (const item of data.integrations ?? []) {
         map[item.provider] = item;

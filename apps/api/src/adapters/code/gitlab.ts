@@ -3,7 +3,7 @@
  * Auth: PRIVATE-TOKEN header (Personal Access Token).
  */
 import type { CodeProvider } from "./contract.js";
-import type { CodeFileDto, ListFilesOptions, RepoTreeEntry } from "./types.js";
+import type { ListFilesOptions, RepoTreeEntry } from "./types.js";
 
 const DEFAULT_GITLAB_URL = "https://gitlab.com";
 

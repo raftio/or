@@ -24,6 +24,7 @@ function StubCard({ connected, onClick, detail, vendorId }: { connected: boolean
 function makeVendor(
   id: string,
   integrationProvider?: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   describeConnection?: (integration: any) => string | undefined,
 ): VendorConfig {
   return {

@@ -3,7 +3,7 @@
  * Auth: Bearer token (PAT or fine-grained token).
  */
 import type { CodeProvider } from "./contract.js";
-import type { CodeFileDto, ListFilesOptions, RepoTreeEntry } from "./types.js";
+import type { ListFilesOptions } from "./types.js";
 
 const GITHUB_API = "https://api.github.com";
 

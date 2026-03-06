@@ -21,6 +21,7 @@ import { ConfluenceForm } from "./confluence-form";
 export interface IntegrationFormProps {
   workspaceId: string;
   token: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   integration: any;
   isAdmin: boolean;
   onUpdate: () => void;
@@ -57,8 +58,10 @@ export interface VendorConfig {
   integrationProvider?: string;
   cardComponent: ComponentType<VendorCardProps>;
   /** Form shown in the drawer. Receives IntegrationFormProps when integrationProvider is set. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   formComponent?: ComponentType<any>;
   /** Extract a displayable connection summary from the stored integration config. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   describeConnection?: (integration: any) => string | undefined;
   /** API path segment for fetching index status (e.g. "github-code"). */
   statusEndpoint?: string;

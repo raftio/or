@@ -4,6 +4,7 @@ import { GitProviderCard } from "./git-provider-card";
 
 interface VendorListProps {
   vendors: VendorConfig[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   integrations: Record<string, any>;
   indexStatusMap?: Record<string, IndexStatus[]>;
   onVendorClick: (vendorId: string) => void;
@@ -11,8 +12,10 @@ interface VendorListProps {
 
 function getIntegration(
   vendor: VendorConfig,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   integrations: Record<string, any>,
-): any | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any {
   return vendor.integrationProvider
     ? integrations[vendor.integrationProvider]
     : undefined;
@@ -20,7 +23,8 @@ function getIntegration(
 
 function getDetail(
   vendor: VendorConfig,
-  integration: any | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  integration: any,
 ): string | undefined {
   if (!integration || !vendor.describeConnection) return undefined;
   return vendor.describeConnection(integration);

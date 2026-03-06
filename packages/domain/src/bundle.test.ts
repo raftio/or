@@ -48,7 +48,8 @@ describe("ExecutionBundleSchema", () => {
   });
 
   it("rejects a bundle without status", () => {
-    const { status: _, ...noStatus } = validBundle;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { status: _status, ...noStatus } = validBundle;
     expect(() => ExecutionBundleSchema.parse(noStatus)).toThrow();
   });
 });

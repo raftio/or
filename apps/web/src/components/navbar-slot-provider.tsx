@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useSyncExternalStore, useRef, type ReactNode } from "react";
+import { createContext, useContext, useSyncExternalStore, useRef, type ReactNode } from "react";
 
 interface NavbarSlotStore {
   content: ReactNode;

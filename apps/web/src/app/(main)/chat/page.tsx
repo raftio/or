@@ -583,7 +583,7 @@ function ChatInner({ workspaceId, token }: { workspaceId: string; token: string 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarLoading, setSidebarLoading] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
-  const [showEvents, setShowEvents] = useState(true);
+  const [showEvents] = useState(true);
   const [inputValue, setInputValue] = useState("");
   const [chatMode, setChatMode] = useState<ChatMode>("agent");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);

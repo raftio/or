@@ -1,16 +1,6 @@
 /**
  * App config from env
  */
-export function getTicketProvider(): "stub" | "linear" | "jira" | "github" {
-  const v = process.env.TICKET_PROVIDER?.toLowerCase();
-  if (v === "linear" || v === "jira" || v === "github") return v;
-  return "stub";
-}
-
-export function getLinearApiKey(): string | undefined {
-  return process.env.LINEAR_API_KEY;
-}
-
 export function getContextCacheTtlMinutes(): number {
   const v = process.env.CONTEXT_CACHE_TTL_MINUTES;
   if (v === undefined) return 5;
@@ -37,30 +27,6 @@ export function getJwtSecret(): string {
     throw new Error("JWT_SECRET must be set and at least 16 characters");
   }
   return secret;
-}
-
-// ── Document Provider ─────────────────────────────────────────────────────
-
-export function getDocumentProvider(): "stub" | "notion" | "confluence" {
-  const v = process.env.DOCUMENT_PROVIDER?.toLowerCase();
-  if (v === "notion" || v === "confluence") return v;
-  return "stub";
-}
-
-export function getNotionApiKey(): string | undefined {
-  return process.env.NOTION_API_KEY;
-}
-
-export function getConfluenceBaseUrl(): string | undefined {
-  return process.env.CONFLUENCE_BASE_URL;
-}
-
-export function getConfluenceEmail(): string | undefined {
-  return process.env.CONFLUENCE_EMAIL;
-}
-
-export function getConfluenceApiToken(): string | undefined {
-  return process.env.CONFLUENCE_API_TOKEN;
 }
 
 // ── AI Decomposer ────────────────────────────────────────────────────────

@@ -1,8 +1,8 @@
 /**
  * RFC-008: Context Synthesis – merge ticket + doc, cache, invalidation
  */
-import { createTicketProvider, createTicketProviderForWorkspace } from "../adapters/ticket/index.js";
-import { createDocumentProvider, createDocumentProviderForWorkspace } from "../adapters/document/index.js";
+import { createTicketProviderForWorkspace } from "../adapters/ticket/index.js";
+import { createDocumentProviderForWorkspace } from "../adapters/document/index.js";
 import { getContextCacheTtlMinutes } from "../config.js";
 import type { SynthesizedContext } from "@or/domain";
 
@@ -33,9 +33,7 @@ export async function synthesizeContext(input: {
   const hit = cache.get(key);
   if (hit && hit.expiresAt > now) return hit.context;
 
-  const ticketProvider = input.workspace_id
-    ? await createTicketProviderForWorkspace(input.workspace_id)
-    : createTicketProvider();
+  const ticketProvider = await createTicketProviderForWorkspace(input.workspace_id ?? "");
   const ticket = await ticketProvider.getTicket(input.ticket_id);
   if (!ticket) return null;
 
@@ -48,9 +46,7 @@ export async function synthesizeContext(input: {
   let excerpts: string[] = [];
 
   if (input.spec_ref) {
-    const docProvider = input.workspace_id
-      ? await createDocumentProviderForWorkspace(input.workspace_id)
-      : createDocumentProvider();
+    const docProvider = await createDocumentProviderForWorkspace(input.workspace_id ?? "");
     const doc = await docProvider.getDocument(input.spec_ref);
     if (doc) {
       sections = doc.sections;

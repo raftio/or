@@ -4,23 +4,12 @@ import { createJiraTicketProvider } from "./jira.js";
 import { createGitHubIssuesProvider } from "./github-issues.js";
 import { createGitLabIssuesProvider } from "./gitlab.js";
 import { createStubTicketProvider } from "./stub.js";
-import { getTicketProvider, getLinearApiKey } from "../../config.js";
 import { query } from "../../db/index.js";
 
 export type { TicketProvider } from "./contract.js";
 export type { TicketDto, SubTaskDto, ListTicketsQuery, AcceptanceCriterionDto, CreateTicketInput } from "./types.js";
 
-/** Global fallback using env vars (backwards-compatible). */
-export function createTicketProvider(): TicketProvider {
-  const kind = getTicketProvider();
-  if (kind === "linear") {
-    const key = getLinearApiKey();
-    if (key) return createLinearTicketProvider(key);
-  }
-  return createStubTicketProvider();
-}
-
-/** Per-workspace provider: reads config from workspace_integrations, falls back to global. */
+/** Per-workspace provider: reads config from workspace_integrations. */
 export async function createTicketProviderForWorkspace(
   workspaceId: string,
 ): Promise<TicketProvider> {
@@ -61,8 +50,8 @@ export async function createTicketProviderForWorkspace(
       }
     }
   } catch {
-    // DB unavailable — fall through to global config
+    // DB unavailable
   }
 
-  return createTicketProvider();
+  return createStubTicketProvider();
 }

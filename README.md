@@ -107,13 +107,6 @@ pnpm start   # starts @or/api
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `VECTOR_DATABASE_URL` | `DATABASE_URL` | Separate DB for pgvector (falls back to `DATABASE_URL`) |
-| `TICKET_PROVIDER` | `stub` | `stub`, `linear`, `jira`, or `github` |
-| `LINEAR_API_KEY` | — | Required when `TICKET_PROVIDER=linear` |
-| `DOCUMENT_PROVIDER` | `stub` | `stub`, `notion`, or `confluence` |
-| `NOTION_API_KEY` | — | Required when `DOCUMENT_PROVIDER=notion` |
-| `CONFLUENCE_BASE_URL` | — | Required when `DOCUMENT_PROVIDER=confluence` |
-| `CONFLUENCE_EMAIL` | — | Required when `DOCUMENT_PROVIDER=confluence` |
-| `CONFLUENCE_API_TOKEN` | — | Required when `DOCUMENT_PROVIDER=confluence` |
 | `AI_DECOMPOSER_PROVIDER` | `stub` | `stub`, `openai`, or `anthropic` — AI bundle decomposition |
 | `AI_DECOMPOSER_MODEL` | provider default | Override decomposer model |
 | `AI_CHAT_PROVIDER` | `stub` | `stub`, `openai`, or `anthropic` — AI chat agent |
